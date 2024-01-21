@@ -67,6 +67,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     subtitleLangKey: LangPackKey,
     subtitleLangArgs: any[],
     subtitleRight: K,
+    titleHiddenLike: boolean,
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     checkboxFieldOptions: CheckboxFieldOptions,
@@ -94,6 +95,7 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     asLink: boolean,
     contextMenu: Omit<Parameters<typeof createContextMenu>[0], 'findElement' | 'listenTo' | 'listenerSetter'>,
     asLabel: boolean
+    danger: boolean;
   }> = {}) {
     if(options.checkboxFieldOptions) {
       options.checkboxField = new CheckboxField({
@@ -105,6 +107,10 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
     const tagName = options.asLink ? 'a' : (options.radioField || options.checkboxField || options.asLabel ? 'label' : 'div');
     this.container = document.createElement(tagName);
     this.container.classList.add('row', 'no-subtitle');
+
+    if(options.danger) {
+      this.container.classList.add('is-danger');
+    }
 
     if(options.noWrap) {
       this.container.classList.add('no-wrap');
@@ -124,6 +130,12 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
 
         setContent(subtitleRight, options.subtitleRight);
         this.subtitleRow.append(subtitle, subtitleRight);
+      }
+
+      if(options.titleHiddenLike) {
+        const btn = Button('btn-icon row-title-btn-toggle-hidden', {icon: 'eye'});
+        this.subtitle.classList.add('row-subtitle-with-hidden-btn');
+        subtitle.append(btn);
       }
     } else if(options.subtitleLangKey) {
       this.subtitle.append(i18n(options.subtitleLangKey, options.subtitleLangArgs));
@@ -180,6 +192,11 @@ export default class Row<T extends SliderSuperTabEventableConstructable = any> {
       if(options.noWrap) this.title.classList.add('no-wrap');
       if(options.title) {
         setContent(this.title, options.title);
+
+        if(options.titleHiddenLike) {
+          this.title.innerText = '••••••••••••••••••••';
+          this.title.classList.add('row-title-hidden');
+        }
       } else if(options.titleLangKey) {
         this.title.append(i18n(options.titleLangKey, options.titleLangArgs));
       }

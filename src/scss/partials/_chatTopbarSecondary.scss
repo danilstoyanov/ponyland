@@ -1,0 +1,87 @@
+// We can do better here with proper refactoring using vars 👀
+
+.topbar-secondary {
+  pointer-events: none;
+  opacity: 0;
+  z-index: 0;
+  box-shadow: var(--section-box-shadow-color);
+}
+
+.topbar.topbar-secondary {
+  cursor: default !important;
+  height: 0px !important;
+  min-height: 0px !important;
+}
+
+.topbar-secondary.is-visible {
+  opacity: 1;
+  pointer-events: all;
+  height: var(--topbar-height) !important;
+  min-height: var(--topbar-height) !important;
+
+  .stream-bar {
+    height: 42px;
+  }
+}
+
+.stream-bar {
+  --accent-color: #4E8EE5;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  border-left: 3px solid var(--accent-color);
+  border-radius: 4px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  position: relative;
+  width: 100%;
+  background: linear-gradient(90deg, var(--accent-color) 0.79%, #976FFF 54.33%, #E46ACE 97.09%); // premium-gradient looks similar, but would not match Figma
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.65); /* Semi-transparent white overlay */
+  }
+
+  &-left {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
+  }
+
+  &-title {
+    color: var(--accent-color);
+    font-size: var(--font-size-14);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-14);
+  }
+
+  &-viewers {
+    color: var(--accent-color);
+    font-size: var(--font-size-14);
+    font-weight: var(--font-weight-normal);
+    line-height: var(--line-height-14);
+  }
+
+  &-join {
+    --size: 1.625rem;
+    --padding: .4875rem;
+    border-radius: calc(var(--size) / 2);
+    font-weight: var(--font-weight-bold);
+    color: var(--badge-text-color);
+    font-size: 0.875rem;
+    text-align: center;
+    height: var(--size);
+    min-width: var(--size);
+    line-height: var(--size) !important;
+    padding: 0 var(--padding);
+    background-color: #E56BCF;
+  }
+}

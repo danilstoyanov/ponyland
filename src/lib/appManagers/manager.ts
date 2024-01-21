@@ -52,6 +52,7 @@ import type AppStoriesManager from './appStoriesManager';
 import type AppBotsManager from './appBotsManager';
 import type AppBoostsManager from './appBoostsManager';
 import type AppStatisticsManager from './appStatisticsManager';
+import type AppStreamsManager from './appLiveStreamsManager';
 import type {AppManagers} from './managers';
 
 export class AppManager {
@@ -69,6 +70,7 @@ export class AppManager {
   protected appAvatarsManager: AppAvatarsManager;
   protected appGroupCallsManager: AppGroupCallsManager;
   protected appCallsManager: AppCallsManager;
+  protected appStreamsManager: AppStreamsManager;
   protected appReactionsManager: AppReactionsManager;
   protected appMessagesManager: AppMessagesManager;
   protected appMessagesIdsManager: AppMessagesIdsManager;

@@ -35,7 +35,7 @@ import AppSharedMediaTab from '../sidebarRight/tabs/sharedMedia';
 import noop from '../../helpers/noop';
 import middlewarePromise from '../../helpers/middlewarePromise';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import {Message, WallPaper, Chat as MTChat} from '../../layer';
+import {Message, WallPaper, Chat as MTChat, TopPeer} from '../../layer';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {getColorsFromWallPaper} from '../../helpers/color';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -45,6 +45,7 @@ import getDialogKey from '../../lib/appManagers/utils/dialogs/getDialogKey';
 import getHistoryStorageKey from '../../lib/appManagers/utils/messages/getHistoryStorageKey';
 import isForwardOfForward from '../../lib/appManagers/utils/messages/isForwardOfForward';
 import getPeerId from '../../lib/appManagers/utils/peers/getPeerId';
+import TopbarSecondary from '../topbarSecondary';
 
 export enum ChatType {
   Chat = 'chat',
@@ -62,6 +63,7 @@ export default class Chat extends EventListenerBase<{
   public backgroundEl: HTMLElement;
 
   public topbar: ChatTopbar;
+  public secondaryBar: TopbarSecondary;
   public bubbles: ChatBubbles;
   public input: ChatInput;
   public selection: ChatSelection;
@@ -341,10 +343,13 @@ export default class Chat extends EventListenerBase<{
     // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.managers);
+    this.secondaryBar = new TopbarSecondary(this, this.managers);
     this.bubbles = new ChatBubbles(this, this.managers);
     this.input = new ChatInput(this, this.appImManager, this.managers, 'chat-input-main');
     this.contextMenu = new ChatContextMenu(this, this.managers);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.managers);
+
+    this.secondaryBar.construct();
 
     this.topbar.constructUtils();
     this.topbar.constructPeerHelpers();
@@ -361,7 +366,7 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.attachContainerListeners();
 
-    this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
+    this.container.append(this.topbar.container, this.secondaryBar.container, this.bubbles.container, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
@@ -633,6 +638,7 @@ export default class Chat extends EventListenerBase<{
       this.topbar?.finishPeerChange(options),
       this.bubbles?.finishPeerChange(),
       this.input?.finishPeerChange(options),
+      this.secondaryBar?.finishPeerChange(options),
       sharedMediaTab?.fillProfileElements()
     ]);
 

@@ -28,7 +28,7 @@ import cancelEvent from '../../helpers/dom/cancelEvent';
 import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import {toast, toastNew} from '../toast';
 import replaceContent from '../../helpers/dom/replaceContent';
-import {ChatFull, Chat as MTChat, GroupCall, Dialog} from '../../layer';
+import {ChatFull, Chat as MTChat, Dialog} from '../../layer';
 import PopupPickUser from '../popups/pickUser';
 import PopupPeer, {PopupPeerCheckboxOptions} from '../popups/peer';
 import AppEditContactTab from '../sidebarRight/tabs/editContact';
@@ -58,6 +58,7 @@ import createBadge from '../../helpers/createBadge';
 import PopupBoostsViaGifts from '../popups/boostsViaGifts';
 import AppStatisticsTab from '../sidebarRight/tabs/statistics';
 import {ChatType} from './chat';
+import PopupLiveStreamStart from '../popups/liveStreamStart';
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean | Promise<boolean>};
 
@@ -333,6 +334,11 @@ export default class ChatTopbar {
     }
 
     const chat = apiManagerProxy.getChat(chatId);
+
+    if(type === 'broadcast' && !(chat as MTChat.chat).pFlags?.creator) {
+      return false;
+    }
+
     return (chat as MTChat.chat).pFlags?.call_active || hasRights(chat, 'manage_call');
   };
 
@@ -394,12 +400,14 @@ export default class ChatTopbar {
       text: 'VideoCall',
       onClick: this.onCallClick.bind(this, 'video'),
       verify: this.verifyCallButton.bind(this, 'video')
-    }, {
+    },
+    {
       icon: 'videochat',
       text: 'PeerInfo.Action.LiveStream',
-      onClick: this.onJoinGroupCallClick,
+      onClick: this.onLiveStreamClick.bind(this),
       verify: this.verifyVideoChatButton.bind(this, 'broadcast')
-    }, {
+    },
+    {
       icon: 'videochat',
       text: 'PeerInfo.Action.VoiceChat',
       onClick: this.onJoinGroupCallClick,
@@ -621,6 +629,13 @@ export default class ChatTopbar {
 
   private onCallClick(type: CallType) {
     this.chat.appImManager.callUser(this.peerId.toUserId(), type);
+  }
+
+  private async onLiveStreamClick() {
+    const channelPeerId = await this.managers.appPeersManager.getInputPeerById(this.chat.peerId);
+    const streamRtpInfo = await this.managers.appLiveStreamsManager.getGroupCallStreamRtmpUrl(channelPeerId);
+
+    PopupElement.createPopup(PopupLiveStreamStart, streamRtpInfo, this.peerId.toChatId());
   }
 
   private onJoinGroupCallClick = () => {

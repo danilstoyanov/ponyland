@@ -166,6 +166,9 @@ export type BroadcastEvents = {
   'call_update': PhoneCall,
   'call_signaling': {callId: CallId, data: Uint8Array},
 
+  'live_stream_started': void,
+  'live_stream_stopped': void,
+
   'quick_reaction': Reaction,
 
   'service_notification': Update.updateServiceNotification,

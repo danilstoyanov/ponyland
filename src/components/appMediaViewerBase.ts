@@ -12,7 +12,7 @@ import type {MyPhoto} from '../lib/appManagers/appPhotosManager';
 import deferredPromise from '../helpers/cancellablePromise';
 import mediaSizes from '../helpers/mediaSizes';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
-import {IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
+import {IS_CHROMIUM, IS_MOBILE, IS_MOBILE_SAFARI, IS_SAFARI} from '../environment/userAgent';
 import {logger} from '../lib/logger';
 import VideoPlayer from '../lib/mediaPlayer';
 import rootScope from '../lib/rootScope';
@@ -65,6 +65,7 @@ import handleVideoLeak from '../helpers/dom/handleVideoLeak';
 import Icon from './icon';
 import {replaceButtonIcon} from './button';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
+import {testIsChromiumAudioCodecIssue} from '../helpers/dom/handleChromiumAudioCodecIssue';
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1665,6 +1666,7 @@ export default class AppMediaViewerBase<
 
     let setMoverPromise: Promise<void>;
     if(isVideo) {
+      // КОД КОТОРЫЙ РАБОТАЕТ С ВИДЕО
       // //////this.log('will wrap video', media, size);
 
       const middleware = mover.middlewareHelper.get();
@@ -1893,7 +1895,18 @@ export default class AppMediaViewerBase<
             };
 
             handleVideoLeak(video, onMediaLoad(video)).catch(onUnsupported);
-            video.addEventListener('error', onUnsupported, {once: true});
+
+            video.addEventListener('error', async(event) => {
+              const error = video.error;
+
+              if(IS_CHROMIUM && error.code === 4) {
+                const downloadedMediaAnother = await appDownloadManager.downloadMedia({media}, 'blob');
+                testIsChromiumAudioCodecIssue(downloadedMediaAnother, video);
+              } else {
+                onUnsupported();
+              }
+            }, {once: true});
+
             middleware.onClean(() => {
               video.removeEventListener('error', onUnsupported);
             });

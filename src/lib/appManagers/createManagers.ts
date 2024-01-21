@@ -54,6 +54,7 @@ import AppStoriesManager from './appStoriesManager';
 import AppBotsManager from './appBotsManager';
 import AppBoostsManager from './appBoostsManager';
 import AppStatisticsManager from './appStatisticsManager';
+import AppLiveStreamsManager from './appLiveStreamsManager';
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -71,6 +72,7 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     appAvatarsManager: new AppAvatarsManager,
     appGroupCallsManager: new AppGroupCallsManager,
     appCallsManager: new AppCallsManager,
+    appLiveStreamsManager: new AppLiveStreamsManager,
     appReactionsManager: new AppReactionsManager,
     appMessagesManager: new AppMessagesManager,
     appMessagesIdsManager: new AppMessagesIdsManager,

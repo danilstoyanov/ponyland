@@ -45,7 +45,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from '../../environment/imageMimeTypesSupport'
 import {NULL_PEER_ID} from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import {ONE_DAY} from '../../helpers/date';
-import TopbarCall from '../../components/topbarCall';
+import TopbarStreamStatus from '../../components/topbarStreamStatus';
 import confirmationPopup from '../../components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
@@ -116,6 +116,7 @@ import safePlay from '../../helpers/dom/safePlay';
 import {RequestWebViewOptions} from './appAttachMenuBotsManager';
 import PopupWebApp from '../../components/popups/webApp';
 import {getPeerColorIndexByPeer, getPeerColorsByPeer, setPeerColors} from './utils/peers/getPeerColorById';
+import TopbarCall from '../../components/topbarCall';
 
 export type ChatSavedPosition = {
   mids: number[],
@@ -544,6 +545,7 @@ export class AppImManager extends EventListenerBase<{
 
     if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
       this.topbarCall = new TopbarCall(managers);
+      // this.topbarStreamStatus = new TopbarStreamStatus(managers);
     }
 
     if(IS_CALL_SUPPORTED) {

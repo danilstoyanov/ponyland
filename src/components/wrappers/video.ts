@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import {IS_SAFARI} from '../../environment/userAgent';
+import {IS_CHROMIUM, IS_SAFARI} from '../../environment/userAgent';
 import {IS_H265_SUPPORTED} from '../../environment/videoSupport';
 import {animateSingle} from '../../helpers/animation';
 import {ChatAutoDownloadSettings} from '../../helpers/autoDownload';
@@ -621,7 +621,13 @@ export default async function wrapVideo({doc, altDoc, container, message, boxWid
         } else {
           renderDeferred.resolve();
         }
-      }, onError);
+      }, (error) => {
+        if(IS_CHROMIUM && video.error.code === 4) {
+          return;
+        } else {
+          onError(error);
+        }
+      });
 
       if(altDoc && altCacheContext) {
         const sources = [

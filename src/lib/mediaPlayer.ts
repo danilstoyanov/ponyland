@@ -9,7 +9,7 @@ import {IS_APPLE_MOBILE, IS_MOBILE} from '../environment/userAgent';
 import IS_TOUCH_SUPPORTED from '../environment/touchSupport';
 import cancelEvent from '../helpers/dom/cancelEvent';
 import ListenerSetter, {Listener} from '../helpers/listenerSetter';
-import {ButtonMenuSync} from '../components/buttonMenu';
+import {ButtonMenuItemOptions, ButtonMenuSync} from '../components/buttonMenu';
 import {ButtonMenuToggleHandler} from '../components/buttonMenuToggle';
 import ControlsHover from '../helpers/dom/controlsHover';
 import {addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen} from '../helpers/dom/fullScreen';
@@ -25,6 +25,7 @@ import ButtonIcon from '../components/buttonIcon';
 import Button from '../components/button';
 import Icon from '../components/icon';
 import setCurrentTime from '../helpers/dom/setCurrentTime';
+import {i18n} from './langPack';
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -32,14 +33,20 @@ export default class VideoPlayer extends ControlsHover {
 
   protected video: HTMLVideoElement;
   protected wrapper: HTMLDivElement;
+  protected loadingScreen: HTMLElement;
   protected progress: MediaProgressLine;
   protected skin: 'default';
+  protected streamControls: ButtonMenuItemOptions[];
 
   protected listenerSetter: ListenerSetter;
   protected playbackRateButton: HTMLElement;
+  protected streamSettingsButton: HTMLElement;
+  protected streamStatusBadge: HTMLElement;
   protected pipButton: HTMLElement;
   protected toggles: HTMLElement[];
 
+  protected streamPlayer: boolean;
+  protected streamCreator: boolean;
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
 
@@ -52,14 +59,20 @@ export default class VideoPlayer extends ControlsHover {
     play = false,
     streamable = false,
     duration,
+    streamPlayer = false,
+    streamCreator = false,
+    streamControls = [],
     onPlaybackRackMenuToggle,
     onPip,
     onPipClose
   }: {
     video: HTMLVideoElement,
     play?: boolean,
-    streamable?: boolean,
     duration?: number,
+    streamable?: boolean,
+    streamPlayer?: boolean,
+    streamCreator?: boolean,
+    streamControls?: any[],
     onPlaybackRackMenuToggle?: VideoPlayer['onPlaybackRackMenuToggle'],
     onPip?: VideoPlayer['onPip'],
     onPipClose?: VideoPlayer['onPipClose']
@@ -69,6 +82,9 @@ export default class VideoPlayer extends ControlsHover {
     this.video = video;
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
+    this.streamPlayer = streamPlayer;
+    this.streamCreator = streamCreator;
+    this.streamControls = streamControls;
 
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
     this.onPip = onPip;
@@ -80,6 +96,10 @@ export default class VideoPlayer extends ControlsHover {
       element: this.wrapper,
       listenerSetter: this.listenerSetter,
       canHideControls: () => {
+        if(streamPlayer) {
+          return false;
+        }
+
         return !this.video.paused && (!this.playbackRateButton || !this.playbackRateButton.classList.contains('menu-open'));
       },
       showOnLeaveToClassName: 'media-viewer-caption',
@@ -92,9 +112,16 @@ export default class VideoPlayer extends ControlsHover {
     this.skin = 'default';
 
     this.stylePlayer(duration);
-    this.setBtnMenuToggle();
 
-    if(this.skin === 'default') {
+    if(!streamPlayer) {
+      this.setBtnMenuToggle();
+    } else {
+      if(streamCreator) {
+        this.setStreamSettingsBtnMenuToggle();
+      }
+    }
+
+    if(!this.streamPlayer && this.skin === 'default') {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.progress = new MediaProgressLine({
         onSeekStart: () => {
@@ -126,6 +153,15 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
+  public get playerWrapper() {
+    return this.wrapper;
+  }
+
+  public setLoadingScreen(screen: HTMLElement) {
+    this.loadingScreen = screen;
+    this.wrapper.append(this.loadingScreen);
+  }
+
   private setIsPlaing(isPlaying: boolean) {
     this.wrapper.classList.toggle('is-playing', isPlaying);
     this.toggles.forEach((toggle) => {
@@ -147,26 +183,46 @@ export default class VideoPlayer extends ControlsHover {
       wrapper.firstElementChild.after(mainToggle);
 
       const leftControls = wrapper.querySelector('.left-controls') as HTMLElement;
+
       const leftToggle = ButtonIcon(` ${skin}__button toggle`, {noRipple: true});
-      leftControls.prepend(leftToggle);
 
       const rightControls = wrapper.querySelector('.right-controls') as HTMLElement;
+
+      if(this.streamPlayer) {
+        this.streamStatusBadge = document.createElement('span');
+        this.streamStatusBadge.classList.add('player-stream-status-badge');
+        this.streamStatusBadge.append(i18n('LiveStream.MediaViewer.Live'));
+
+        if(this.streamCreator) {
+          this.streamSettingsButton = ButtonIcon(` ${skin}__button btn-menu-toggle night`, {noRipple: true});
+          this.streamSettingsButton.append(Icon('more'));
+        }
+
+        leftControls.append(this.streamStatusBadge);
+      }
+
       this.playbackRateButton = ButtonIcon(` ${skin}__button btn-menu-toggle night`, {noRipple: true});
       if(!IS_MOBILE && document.pictureInPictureEnabled) {
         this.pipButton = ButtonIcon(`pip ${skin}__button`, {noRipple: true});
       }
+
       const fullScreenButton = ButtonIcon(` ${skin}__button`, {noRipple: true});
-      rightControls.append(...[this.playbackRateButton, this.pipButton, fullScreenButton].filter(Boolean));
+      rightControls.append(...[this.streamSettingsButton, this.playbackRateButton, this.pipButton, fullScreenButton].filter(Boolean));
 
       const toggles = this.toggles = [leftToggle];
-      const timeElapsed = wrapper.querySelector('#time-elapsed');
-      timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
-      timeDuration.textContent = toHHMMSS(video.duration | 0);
+      let timeElapsed: HTMLElement;
+
+      if(!this.streamPlayer) {
+        timeElapsed = wrapper.querySelector('#time-elapsed');
+        timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
+        timeDuration.textContent = toHHMMSS(video.duration | 0);
+        leftControls.prepend(leftToggle);
+      }
 
       const volumeSelector = new VolumeSelector(listenerSetter);
 
       volumeSelector.btn.classList.remove('btn-icon');
-      leftControls.insertBefore(volumeSelector.btn, timeElapsed.parentElement);
+      leftControls.append(volumeSelector.btn);
 
       toggles.forEach((button) => {
         attachClickEvent(button, () => {
@@ -265,9 +321,11 @@ export default class VideoPlayer extends ControlsHover {
       addFullScreenListener(wrapper, this.onFullScreen.bind(this, fullScreenButton), listenerSetter);
       this.onFullScreen(fullScreenButton);
 
-      listenerSetter.add(video)('timeupdate', () => {
-        timeElapsed.textContent = toHHMMSS(video.currentTime | 0);
-      });
+      if(!this.streamPlayer) {
+        listenerSetter.add(video)('timeupdate', () => {
+          timeElapsed.textContent = toHHMMSS(video.currentTime | 0);
+        });
+      }
 
       listenerSetter.add(video)('play', () => {
         wrapper.classList.add('played');
@@ -296,12 +354,14 @@ export default class VideoPlayer extends ControlsHover {
       this.setIsPlaing(false);
     });
 
-    if(video.duration || initDuration) {
-      timeDuration.textContent = toHHMMSS(Math.round(video.duration || initDuration));
-    } else {
-      onMediaLoad(video).then(() => {
-        timeDuration.textContent = toHHMMSS(Math.round(video.duration));
-      });
+    if(!this.streamPlayer) {
+      if(video.duration || initDuration) {
+        timeDuration.textContent = toHHMMSS(Math.round(video.duration || initDuration));
+      } else {
+        onMediaLoad(video).then(() => {
+          timeDuration.textContent = toHHMMSS(Math.round(video.duration));
+        });
+      }
     }
   }
 
@@ -311,6 +371,19 @@ export default class VideoPlayer extends ControlsHover {
 
   private buildControls() {
     const skin = this.skin;
+
+    if(this.streamPlayer && skin === 'default') {
+      return `
+        <div class="${skin}__gradient-bottom ckin__controls"></div>
+          <div class="${skin}__controls ckin__controls">
+          <div class="bottom-controls">
+            <div class="left-controls"></div>
+            <div class="right-controls"></div>
+          </div>
+        </div>
+      `;
+    };
+
     if(skin === 'default') {
       return `
       <div class="${skin}__gradient-bottom ckin__controls"></div>
@@ -369,6 +442,23 @@ export default class VideoPlayer extends ControlsHover {
       playbackRateButton.append(icon);
     }
   }
+
+  protected setStreamSettingsBtnMenuToggle() {
+    const btnMenu = ButtonMenuSync({buttons: this.streamControls ?? []});
+    btnMenu.classList.add('top-left');
+
+    ButtonMenuToggleHandler({
+      el: this.streamSettingsButton,
+      onOpen: this.onPlaybackRackMenuToggle ? () => {
+        // this.onPlaybackRackMenuToggle(true);
+      } : undefined,
+      onClose: this.onPlaybackRackMenuToggle ? () => {
+        // this.onPlaybackRackMenuToggle(false);
+      } : undefined
+    });
+
+    this.streamSettingsButton.append(btnMenu);
+  };
 
   protected toggleFullScreen() {
     const player = this.wrapper;

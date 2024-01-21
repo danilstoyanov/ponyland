@@ -1,0 +1,126 @@
+.player {
+  &-stream-wrapper {
+    height: auto;
+    width: calc((1080px / 1280px) * 100vw);
+    max-width: 1280px; // we don't have designs for different screens, so lets set max-width as in Figma
+    border-radius: 10px;
+    overflow: hidden;
+
+    .bottom-controls {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .default__controls {
+      bottom: 0.5rem;
+    }
+  }
+
+  &-stream {
+    width: 100%;
+    aspect-ratio: 16/9;
+
+    &-status-badge {
+      --size: 1.375rem;
+      --padding: .4375rem;
+      border-radius: calc(var(--size) / 2);
+      font-weight: var(--font-weight-bold);
+      color: var(--badge-text-color);
+      font-size: .875rem;
+      text-align: center;
+      text-transform: uppercase;
+    
+      height: var(--size);
+      min-width: var(--size);
+      margin-right: 1rem;
+      line-height: var(--size) !important;
+      padding: 0 var(--padding);
+      border-radius: 12px;
+
+      background: #636363; // there is no such color in theme
+      transition: 0.3s ease;
+    }
+    
+    &-status-badge.live {
+      background: var(--premium-gradient);
+    }
+  };
+
+  &-transcoding {
+    position: absolute;
+    top: -100vh;
+    width: -100vh;
+    opacity: 0;
+    width: 1260;
+    height: 768;
+    pointer-events: none;
+    background-color: pink;
+  };
+
+  &-loading-screen {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  };
+}
+
+.await-stream {
+  &-container {
+    position: relative;
+    z-index: 2;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+
+    .row-icon,
+    .btn-icon,
+    .row-title,
+    .row-subtitle {
+      color: white !important;
+    }
+  }
+
+  &-info {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem;
+    gap: 10px;
+  }
+
+  &-title {
+    display: flex;
+    position: relative;
+    height: 1.5rem;
+    gap: 10px;
+    color: white;
+    font-size: var(--font-size-20);
+    font-weight: var(--font-weight-bold);
+
+    &-preloader {
+      position: static !important;
+    }
+  }
+
+  &-description {
+    color: white;
+    font-size: var(--font-size-16);
+    line-height: var(--line-height-16);
+  }
+}
+
+.player-secondary {
+  position: absolute;
+  z-index: 2;
+  will-change: opacity;
+  opacity: 0;
+}
+
+.player-secondary.player-secondary-active {
+  opacity: 1;
+}
