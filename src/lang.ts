@@ -2188,7 +2188,7 @@ const lang = {
   'PrivacySettingsController.P2p.Desc': 'Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but may slightly decrease audio and video quality.',
   'PrivacySettingsController.PhoneCallDescription': 'You can restrict who can call you with granular precision.',
   'PrivacySettingsController.ProfilePhoto.CustomHelp': 'You can restrict who can see your profile photo with granular precision.',
-  'PrivacySettingsController.LastSeenDescription': 'You won\'t see Last Seen or Online statuses for people with whom you don\'t share yours. Approximate times will be shown instead (recently, within a week, within a month).',
+  'PrivacySettingsController.LastSeenDescription': 'Unless you are a Premium user, you won\'t see Last Seen or Online statuses for people with whom you don\'t share yours. Approximate times will be shown instead (recently, within a week, within a month).',
   'PrivacySettingsController.PeerInfo': 'You can add users or entire groups as exceptions that will override the settings above.',
   'PrivacySettingsController.Everbody': 'Everybody',
   'PrivacySettingsController.MyContacts': 'My Contacts',
