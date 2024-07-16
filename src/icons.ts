@@ -21,7 +21,7 @@ const Icons = {
   aspect_ratio_3_2: 'e913',
   aspect_ratio_4_3: 'e914',
   aspect_ratio_5_4: 'e915',
-  aspect_ratio_7_6: 'e916',
+  aspect_ratio_7_5: 'e916',
   aspect_ratio_free: 'e917',
   aspect_ratio_image_original: 'e918',
   aspect_ratio_square: 'e919',

@@ -55,6 +55,9 @@ import pause from '../../helpers/schedulers/pause';
 import {Accessor, createRoot, createSignal, Setter} from 'solid-js';
 import SelectedEffect from '../chat/selectedEffect';
 
+import ButtonIcon from '../buttonIcon';
+import {createMediaEditor} from '../mediaEditor';
+
 type SendFileParams = SendFileDetails & {
   file?: File,
   scaledBlob?: Blob,
@@ -797,6 +800,22 @@ export default class PopupNewMedia extends PopupElement {
     } else {
       const img = new Image();
       itemDiv.append(img);
+
+      /* Создать меню из 3 айтемов */
+      const imageMenuDiv = document.createElement('div');
+      imageMenuDiv.classList.add('popup-item-media-menu');
+
+      const enhanceBtn = ButtonIcon('enhance_media', {noRipple: true});
+      const spoilerBtn = ButtonIcon('mediaspoiler', {noRipple: true});
+      const binBtn = ButtonIcon('delete_filled', {noRipple: true});
+
+      enhanceBtn.addEventListener('click', () => {
+        createMediaEditor();
+      });
+
+      imageMenuDiv.append(enhanceBtn, spoilerBtn, binBtn);
+      itemDiv.append(imageMenuDiv);
+
       const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
       await renderImageFromUrlPromise(img, url);

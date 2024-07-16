@@ -487,6 +487,12 @@ IMAGE_MIME_TYPES_SUPPORTED_PROMISE.then((mimeTypes) => {
       });
     }, 500); */
   } else {
+    if(location.href.includes('sandbox=1')) {
+      (await import('./pages/pageSandbox')).default.mount();
+
+      return;
+    }
+
     console.log('Will mount IM page:', Date.now() / 1000);
     fadeInWhenFontsReady(document.getElementById('main-columns'), loadFonts());
     (await import('./pages/pageIm')).default.mount();

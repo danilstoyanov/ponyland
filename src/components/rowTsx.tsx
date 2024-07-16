@@ -27,6 +27,7 @@ export default function RowTsx(props: Partial<{
   ref: Ref<HTMLElement>,
   icon: Icon,
   iconClasses: string[],
+  rowClasses: string[],
   subtitle: JSX.Element,
   subtitleRight: JSX.Element,
   radioField: JSX.Element,
@@ -120,7 +121,8 @@ export default function RowTsx(props: Partial<{
         'is-disabled': props.disabled,
         'is-fake-disabled': props.fakeDisabled,
         'row-grid': !!props.rightContent,
-        'with-midtitle': !!props.midtitle
+        'with-midtitle': !!props.midtitle,
+        ...(Array.isArray(props.rowClasses) ? props.rowClasses.reduce((acc, className) => ({...acc, [className]: true}), {}) : {})
       }}
       onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
     >

@@ -1,0 +1,386 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+@import "../../scss/mixins";
+@import "../../scss/variables";
+
+$shadow: 0px 0 3px rgba(0, 0, 0, 0.20);
+$color-inactive: rgba(255, 255, 255, .5);
+
+// styles.MediaEditor
+// styles.MediaEditorContainer
+// styles.MediaEditorBackground
+
+.MediaEditor {
+  --sidebar-width: 400px;
+
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+
+  &Preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: calc(100% - var(--sidebar-width));
+    flex-grow: 1;
+    background-color: #000000;
+
+    &Canvas {
+      height: 100%;
+    }
+  }
+
+  &Background {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, .9);
+    content: " ";
+    pointer-events: none;
+
+    :global(html.night) & {
+      background-color: rgba(var(--body-background-color-rgb), .9);
+    }
+  }
+
+  &Container {
+    z-index: 1;
+    position: relative;
+    height: 100%;
+    display: flex;
+  }
+
+  &Sidebar {
+    height: 100%;
+    width: var(--sidebar-width);
+    background-color: var(--surface-color);
+
+    &Header {
+      display: flex;
+      padding-inline: 8px;
+      min-height: 3.5rem;
+
+      &CloseButton {
+        display: flex;
+        align-items: center;
+        width: 2.5rem;
+      }
+
+      &Title {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        font-weight: var(--font-weight-bold);
+        padding-inline-start: 1.5rem;
+        font-size: 1.25rem;
+        color: var(--primary-text-color);
+      }
+    }
+
+    &SectionHeader {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 10px;
+      font-style: normal;
+      font-weight: 600;
+      font-size: 16px;
+      line-height: 20px;
+      color: #717579; // not in theme
+      padding: 14px 16px;
+    }
+
+    &Tabs {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      &List {
+        display: flex;
+        justify-content: space-between;
+        padding-inline: 8px;
+        box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+
+        &Tab {
+          position: relative;
+          width: 48px;
+          height: 48px;
+
+          &.active {
+            color: var(--primary-color);
+          }
+
+          &.active:after {
+            content: ' ';
+            position: absolute;
+            bottom: 0;
+            left: 12px;
+            width: 24px;
+            height: 3px;
+            border-top-left-radius: 2px;
+            border-top-right-radius: 2px;
+            background-color: var(--primary-color);
+          }
+        }
+      };
+
+      &Content {
+        padding-inline: 8px;
+      };
+
+      &ContentTabPanel {
+        &Filter {
+          display: flex;
+          flex-direction: column;
+          padding-inline: 16px;
+          padding-block: 24px;
+          gap: 32px;
+        }
+
+        &Crop {
+          &Row {
+            display: flex;
+            gap: 8px;
+
+            > * {
+              flex-grow: 1;
+            }
+          }
+        }
+
+        &Text {
+          height: 100%;
+          padding-inline: 8px;
+          padding-block: 16px;
+
+          &Row {
+            display: flex;
+            justify-content: space-between;
+          }
+
+          &Col {
+            display: flex;
+          }
+        }
+      };
+    }
+  }
+
+  &RangeSelector {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    height: 50px;
+
+    &Legend {
+      display: flex;
+      justify-content: space-between;
+      font-style: normal;
+      font-weight: 500;
+      font-size: 16px;
+      line-height: 20px;
+
+      &Label {
+        font-style: normal;
+        font-weight: 500;
+        font-size: 16px;
+        line-height: 20px;
+      }
+
+      &Value {
+        color: var(--primary-color);
+      }
+
+      &ValueDefault {
+        color: #717579; // not in theme
+      }
+    }
+
+    &Track {
+      // padding-inline: 10px;
+
+      :global(.progress-line) {
+        --thumb-size: 20px;
+      }
+    }
+  }
+
+  &ColorPicker {
+    &Tabs {
+      display: flex;
+      gap: 6px;
+
+      &Tab {}
+
+      &Circle {
+        flex-shrink: 0;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background-color: var(--color-picker-tabs-circle-color);
+
+        ~ * {
+          --ripple-color: var(--color-picker-tabs-circle-ripple-color);
+        }
+      }
+    }
+
+    // Proper alternative would be decomposition of current color picker, but there's no much time for this =(
+    &Widget {
+      display: grid;
+      column-gap: 24px;
+      grid-template-columns: 1.25fr 1fr;
+
+      :global(.color-picker-box) {
+        height: 120px;
+        order: 1;
+        grid-row: 2;
+      }
+  
+      :global(.color-picker-sliders) {
+        order: 2;
+        grid-row: 1;
+        grid-column: 1 / 3;
+      }
+  
+      :global(.color-picker-inputs) {
+        flex-direction: column;
+        order: 2;
+        grid-row: 2;
+      }
+  
+      :global(.color-picker-inputs .input-field) {
+        flex: unset;
+      }
+    }
+  }
+}
+
+.Tool {
+  &Row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  &SvgWrapper {
+    position: relative;
+    overflow: hidden;
+    height: inherit;
+
+    &::before {
+      content: ' ';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 0;
+      top: calc(50% - 10px);
+      background: linear-gradient(180deg, rgba(33, 33, 33, 0) 0%, #212121 100%);
+      transform: rotate(90deg);
+      z-index: 2;
+    }
+  }
+
+  &Svg {
+    height: 3rem;
+    transform: translateX(-32px);
+    transition: transform 0.3s ease;
+  }
+
+  &Title {
+    transform: translateX(-32px);
+    transition: transform 0.3s ease;
+  }
+
+  &:hover &Svg,
+  &:hover &Title {
+    transform: translateX(0);
+  }
+}
+
+// &.isFull {
+//   .ViewerBackground {
+//     background-color: #000;
+//   }
+
+//   &.isReady {
+//     perspective: 1000px;
+//     transform-style: preserve-3d;
+//     overflow: hidden; // magic property
+//   }
+
+//   &.isReady .ViewerStoryContainer {
+//     --transition-time: .3s;
+//     --transition: var(--transition-standard-easing) var(--transition-time);
+//     visibility: hidden;
+//     opacity: 0;
+//     // height: 100%;
+//     margin: 0;
+//     transition-delay: 0s, 0s, var(--transition-time);
+
+//     @include animation-level-global(2) {
+//       transition: opacity var(--transition-time), transform var(--transition-time), visibility var(--transition-time);
+//     }
+
+//     &.fromLeft {
+//       transform: rotateY(90deg) translateX(50%) rotateY(-90deg) translateX(-50%) rotateY(-90deg);
+
+//       &.current {
+//         transform: rotateY(90deg) translateX(50%) rotateY(0deg) translateX(-50%) rotateY(-90deg);
+//       }
+//     }
+
+//     &.current {
+//       opacity: 1;
+//       visibility: visible;
+//       transition-delay: 0s, 0s, 0s;
+//     }
+
+//     &.fromRight {
+//       transform: rotateY(-90deg) translateX(-50%) rotateY(90deg) translateX(50%) rotateY(90deg);
+
+//       &.current {
+//         transform: rotateY(-90deg) translateX(-50%) rotateY(0deg) translateX(50%) rotateY(90deg);
+//       }
+//     }
+//   }
+
+//   :global(.stories-input) {
+//     --chat-input-padding: .5rem;
+//     --chat-input-background-color: #212121;
+//     --chat-input-focus-offset: 0px;
+//     --backdrop-filter: unset;
+//   }
+
+//   // .ViewerStory {
+//   //   height: 100%;
+//   //   // aspect-ratio: unset;
+//   // }
+
+//   // .ViewerStory,
+//   // .ViewerStoryContent,
+//   // .ViewerStoryContentMedia {
+//   //   border-radius: #{$border-radius-medium};
+//   // }
+
+//   // .ViewerStoryContent {
+//   //   aspect-ratio: inherit;
+//   //   overflow: hidden;
+//   //   top: 50%;
+//   //   transform: translateY(-50%);
+//   // }
+
+//   // :global(.stories-input) {
+//   //   bottom: .5rem;
+//   // }
+// }

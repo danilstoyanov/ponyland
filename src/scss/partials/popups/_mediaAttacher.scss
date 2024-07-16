@@ -195,6 +195,19 @@
     }
   }
 
+  .popup-item-media-menu {
+    --secondary-text-color: #fff;
+    bottom: 0;
+    position: absolute;
+    display: flex;
+    padding: 6px 10px;
+    backdrop-filter: blur(16px);
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    transform: translateY(100%);
+    transition: transform var(--transition-standard-in);
+  }
+
   .popup-photo > .popup-item-media {
     display: flex;
     justify-content: center;
@@ -202,6 +215,10 @@
 
     img {
       object-fit: contain;
+    }
+
+    &:hover .popup-item-media-menu {
+      transform: translateY(-6px);
     }
   }
 

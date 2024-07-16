@@ -254,6 +254,10 @@ $row-border-radius: $border-radius-medium;
       &-stars-color {
         color: #fecf16;
       }
+
+      &-rotated {
+        transform: translateY(-50%) rotate(90deg);
+      }
     }
 
     &:not(.row-with-icon) .row-icon {

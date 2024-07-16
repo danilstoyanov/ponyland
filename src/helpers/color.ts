@@ -163,6 +163,12 @@ export function hexToRgb(hex: string) {
   return hexaToRgba(hex.slice(0, 7)) as any as ColorRgb;
 }
 
+export function hexToRgbaWithOpacity(hex: string, opacity: number) {
+  const rgba = hexaToRgba(hex);
+  rgba[3] = opacity;
+  return rgba;
+}
+
 export function hexaToHsla(hexa: string) {
   const rgba = hexaToRgba(hexa);
   return rgbaToHsla(rgba[0], rgba[1], rgba[2], rgba[3]);
