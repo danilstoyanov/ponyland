@@ -1,4 +1,4 @@
-import {JSX, Ref} from 'solid-js';
+import {createEffect, JSX, Ref} from 'solid-js';
 import {Dynamic} from 'solid-js/web';
 import setInnerHTML from '../helpers/dom/setInnerHTML';
 import classNames from '../helpers/string/classNames';
@@ -107,6 +107,10 @@ export default function RowTsx(props: Partial<{
     props.media
   );
 
+  createEffect(() => {
+    console.log('props.rowClasses: ', props.rowClasses);
+  })
+
   const ret = (
     <Dynamic
       ref={props.ref as any}
@@ -122,7 +126,7 @@ export default function RowTsx(props: Partial<{
         'is-fake-disabled': props.fakeDisabled,
         'row-grid': !!props.rightContent,
         'with-midtitle': !!props.midtitle,
-        ...(Array.isArray(props.rowClasses) ? props.rowClasses.reduce((acc, className) => ({...acc, [className]: true}), {}) : {})
+        ...(Array.isArray(props.rowClasses) ? props.rowClasses.filter(Boolean).reduce((acc, className) => ({...acc, [className]: true}), {}) : {})
       }}
       onClick={typeof(props.clickable) !== 'boolean' && props.clickable}
     >

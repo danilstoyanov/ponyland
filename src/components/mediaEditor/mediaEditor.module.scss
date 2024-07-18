@@ -374,6 +374,11 @@
   }
 }
 
+.Tool.ToolSelected .ToolSvg,
+.Tool.ToolSelected .ToolTitle {
+  transform: translateX(0);
+}
+
 .TransformableEntity {
   position: relative;
   z-index: 3;

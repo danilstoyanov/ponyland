@@ -1,6 +1,6 @@
 import {Dynamic, Portal} from 'solid-js/web';
 import {createStore, unwrap} from 'solid-js/store';
-import {createEffect, createSignal, For, on, onMount, Show, splitProps} from 'solid-js';
+import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import {RangeSelectorTsx} from '../rangeSelectorTsx';
 import RowTsx from '../rowTsx';
@@ -10,9 +10,8 @@ import {Ripple} from '../rippleTsx';
 import ColorPickerTsx from '../colorPickerTsx';
 import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
-import ButtonMenu from '../buttonMenu';
-import ButtonIcon from '../buttonIcon';
-import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools';
+import {ButtonCornerTsx} from '../buttonCornerTsx';
+import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
 // import png from './main-canvas.png';
 import png from './main-canvas-big.png';
 import debounce from '../../helpers/schedulers/debounce';
@@ -31,22 +30,55 @@ import {
   applySelectiveShadow,
   applyGrain
 } from './filters';
-import {StickerEntity, StickerEntityType, TextEntityType, TransformableEntity} from './entities'
+import {StickerEntityType, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
+import {PrimitivePen, PrimitiveArrow, PrimitiveBrush, PrimitiveNeon, PrimitiveEraser} from './tools';
 
-
-// class={classNames(
-//   styles.ViewerStoryMediaAreaReactionBubbles,
-
-// .sidebar
-// &-header
-// &-close-button
-// &-content
 
 /* Navbar & Tabs */
+type FilterType = 'enhance'
+  | 'brightness'
+  | 'contrast'
+  | 'saturation'
+  | 'warmth'
+  | 'fade'
+  | 'highlights'
+  | 'shadows'
+  | 'vignette'
+  | 'grain'
+  | 'sharpen';
+
+type MediaEditorTab = 'enhance'
+  | 'crop'
+  | 'text'
+  | 'brush'
+  | 'smile';
+
+type ToolType = 'pen'
+  | 'arrow'
+  | 'brush'
+  | 'neon'
+  | 'blur'
+  | 'eraser'
+  | '';
 
 interface MediaEditorColorPickerProps {
   onChange: (color: Pick<ReturnType<ColorPicker['getCurrentColor']>, 'rgba'>) => void;
+}
+
+interface MediaEditorToolProps {
+  svg: JSX.Element;
+  color: string;
+  title: string;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+interface MediaEditorTool {
+  id: number;
+  size: number;
+  type: ToolType;
+  color?: string;
 }
 
 const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
@@ -162,31 +194,7 @@ const MediaEditorColorPicker = (props: MediaEditorColorPickerProps) => {
   )
 };
 
-const MediaEditorTool = (props: {svg: any; color: string; title: string}) => {
-  // <div class={styles.MediaEditorColorPicker}>
-  //   <div class={styles.MediaEditorColorPickerTabs}>
-  //     <For each={colors}>
-  //       {(_, index) => (
-  //         <ButtonIconTsx style={{
-  //           '--color-picker-tabs-circle-color': colors[index()],
-  //           '--color-picker-tabs-circle-ripple-color': ripplifiedColors[index()]
-  //         }}>
-  //           <div class={styles.MediaEditorColorPickerTabsCircle} />
-  //         </ButtonIconTsx>
-  //       )}
-  //     </For>
-
-  //     <ButtonIconTsx style={{
-  //       '--color-picker-tabs-circle-color': colors[0],
-  //       '--color-picker-tabs-circle-ripple-color': ripplifiedColors[0]
-  //     }}>
-  //       <div class={styles.MediaEditorColorPickerTabsCircle} />
-  //     </ButtonIconTsx>
-  //   </div>
-
-  //   {/* <ColorPickerTsx class={styles.MediaEditorColorPickerWidget} /> */}
-  // </div>
-
+const MediaEditorTool = (props: MediaEditorToolProps) => {
   const ret = (
     <div class={styles.ToolRow}>
       <div class={styles.ToolSvgWrapper}>
@@ -202,30 +210,22 @@ const MediaEditorTool = (props: {svg: any; color: string; title: string}) => {
   );
 
   return (
-    <RowTsx title={ret} clickable={true} rowClasses={[styles.Tool, 'row-small']} />
+    <RowTsx
+      title={ret}
+      clickable={props.onClick}
+      rowClasses={[
+        'row-small',
+        styles.Tool,
+        props.isSelected ? styles.ToolSelected : ''
+      ]}
+    />
   );
 };
 
-type FilterType = 'enhance'
-  | 'brightness'
-  | 'contrast'
-  | 'saturation'
-  | 'warmth'
-  | 'fade'
-  | 'highlights'
-  | 'shadows'
-  | 'vignette'
-  | 'grain'
-  | 'sharpen';
-
-type MediaEditorTab = 'enhance'
-  | 'crop'
-  | 'text'
-  | 'brush'
-  | 'smile';
-
 type MediaEditorStateType = {
   selectedEntityId: number;
+  selectedToolId: number;
+  tools: MediaEditorTool[];
   entities: Array<TextEntityType | StickerEntityType>;
 };
 
@@ -234,10 +234,49 @@ export const MediaEditor = () => {
   let filterLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('text');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
 
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
+    selectedToolId: -1,
+    tools: [
+      {
+        id: 0,
+        type: 'pen',
+        size: 16,
+        color: '#fff'
+      },
+      {
+        id: 1,
+        type: 'arrow',
+        size: 16,
+        color: '#fff'
+      },
+      {
+        id: 2,
+        type: 'brush',
+        size: 16,
+        color: '#fff'
+      },
+      {
+        id: 3,
+        type: 'neon',
+        size: 16,
+        color: '#fff'
+      },
+      {
+        id: 4,
+        type: 'blur',
+        size: 16,
+        color: '#fff'
+      },
+      {
+        id: 5,
+        type: 'eraser',
+        size: 16,
+        color: '#fff'
+      }
+    ],
     entities: [
       {
         id: 0,
@@ -310,10 +349,30 @@ export const MediaEditor = () => {
       const drawingCtx = drawingLayerCanvas.getContext('2d');
       drawingCtx.fillStyle = 'blue';
       drawingCtx.fillRect(0, 0, 400, 800);
+
+      // const pen = new PrimitivePen(drawingLayerCanvas, previewRef);
+      // const pen = new PrimitiveArrow(drawingLayerCanvas, previewRef);
+
+      const brush = new PrimitiveEraser(drawingLayerCanvas, previewRef);
+
+      drawingLayerCanvas.addEventListener('mousedown', brush.start.bind(brush));
+      drawingLayerCanvas.addEventListener('mousemove', brush.move.bind(brush));
+      drawingLayerCanvas.addEventListener('mouseup', brush.end.bind(brush));
     });
 
     image.src = png;
   });
+
+  // * Canvas Renderer
+  const renderMedia = () => {
+    alert('render media');
+
+    /*
+      порядок рендеринга, пока не учитываем обрезку
+
+      1 слой с фото соединяем со слоем для рисования
+    */
+  };
 
   // * Handlers
   const handleFilterUpdate = (type: FilterType) => {
@@ -338,12 +397,21 @@ export const MediaEditor = () => {
     };
   };
 
+  // * Tools Handlers
+  const selectTool = (id: number) => {
+    setState({selectedToolId: id});
+  };
+
+  const setToolColor = (color: MediaEditorTool['color']) => {
+    setState('tools', state.selectedToolId, {color});
+  };
+
   // * Entity Handlers
   const selectEntity = (id: number) => {
     setState({selectedEntityId: id});
   };
 
-  // * Text Handlers
+  // * Text Entity Handlers
   const addTextEntity = () => {
     setState('entities', state.entities.length, {
       id: state.entities.length,
@@ -369,23 +437,19 @@ export const MediaEditor = () => {
 
   const setTextEntityFont = (fontFamily: TextEntityType['fontFamily']) => {
     setState('entities', state.selectedEntityId, {fontFamily})
-  }
+  };
 
   const setTextEntityFontSize = (fontSize: TextEntityType['fontSize']) => {
     setState('entities', state.selectedEntityId, {fontSize})
-  }
+  };
 
   const setTextEntityFontColor = (color: TextEntityType['color']) => {
     setState('entities', state.selectedEntityId, {color})
-  }
+  };
 
   const setTextEntityTextAlign = (textAlign: TextEntityType['textAlign']) => {
     setState('entities', state.selectedEntityId, {textAlign})
-  }
-
-  createEffect(() => {
-    console.log('state: ', state.entities.length, unwrap(state));
-  });
+  };
 
   return (
     <div class={styles.MediaEditor}>
@@ -711,6 +775,7 @@ export const MediaEditor = () => {
 
                     <RowTsx title='Add text' clickable={addTextEntity} />
                     <RowTsx title='Remove text' clickable={() => true} />
+                    <RowTsx title='Render result' clickable={renderMedia} />
 
                     <div class={styles.MediaEditorSidebarSectionHeader}>
                       Font
@@ -728,18 +793,63 @@ export const MediaEditor = () => {
 
               {activeTab() === 'brush' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
+                  <div class={styles.MediaEditorSidebarTabsContentTabPanelTextRow}>
+                    <MediaEditorColorPicker onChange={(color) => setToolColor(color.rgba)} />
+                  </div>
+
                   <MediaEditorRangeSelector label="Size" min={10} max={48} step={1} value={14} />
 
                   <div class={styles.MediaEditorSidebarSectionHeader}>
                     Tool
                   </div>
 
-                  <MediaEditorTool title="Pen" svg={<PenSvg />} color="red" />
-                  <MediaEditorTool title="Arrow" svg={<ArrowSvg />} color="green" />
-                  <MediaEditorTool title="Brush" svg={<BrushSvg />} color="blue" />
-                  <MediaEditorTool title="Neon" svg={<NeonBrushSvg />} color="orange" />
-                  <MediaEditorTool title="Blur" svg={<BlurSvg />} color="purple" />
-                  <MediaEditorTool title="Eraser" svg={<EraserSvg />} color="blue" />
+                  <MediaEditorTool
+                    title="Pen"
+                    color={state.tools[0].color}
+                    svg={<PenSvg />}
+                    isSelected={state.selectedToolId === 0}
+                    onClick={() => selectTool(0)}
+                  />
+
+                  <MediaEditorTool
+                    title="Arrow"
+                    color={state.tools[1].color}
+                    svg={<ArrowSvg />}
+                    isSelected={state.selectedToolId === 1}
+                    onClick={() => selectTool(1)}
+                  />
+
+                  <MediaEditorTool
+                    title="Brush"
+                    color={state.tools[2].color}
+                    svg={<BrushSvg />}
+                    isSelected={state.selectedToolId === 2}
+                    onClick={() => selectTool(2)}
+                  />
+
+                  <MediaEditorTool
+                    title="Neon"
+                    color={state.tools[3].color}
+                    svg={<NeonBrushSvg />}
+                    isSelected={state.selectedToolId === 3}
+                    onClick={() => selectTool(3)}
+                  />
+
+                  <MediaEditorTool
+                    title="Blur"
+                    color={state.tools[4].color}
+                    svg={<BlurSvg />}
+                    isSelected={state.selectedToolId === 4}
+                    onClick={() => selectTool(4)}
+                  />
+
+                  <MediaEditorTool
+                    title="Eraser"
+                    color={state.tools[5].color}
+                    svg={<EraserSvg />}
+                    isSelected={state.selectedToolId === 5}
+                    onClick={() => selectTool(5)}
+                  />
                 </div>
               )}
 
@@ -750,6 +860,8 @@ export const MediaEditor = () => {
               )}
             </div>
           </div>
+
+          <ButtonCornerTsx onClick={() => alert('click stuff')} />
         </div>
       </div>
 
@@ -766,21 +878,3 @@ export const createMediaEditor = () => {
   );
 };
 
-{/* <div class="search-super-tabs-scrollable menu-horizontal-scrollable sticky">
-  <div class="scrollable scrollable-x search-super-nav-scrollable">
-    <nav class="search-super-tabs menu-horizontal-div">
-      <div class="menu-horizontal-div-item rp hide">
-        <span class="menu-horizontal-div-item-span"><span class="i18n">Chats</span><i></i></span>
-        <div class="c-ripple"></div>
-      </div>
-      <div class="menu-horizontal-div-item rp hide">
-        <span class="menu-horizontal-div-item-span"><span class="i18n">Stories</span><i></i></span>
-        <div class="c-ripple"></div>
-      </div>
-      <div class="menu-horizontal-div-item rp active">
-        <span class="menu-horizontal-div-item-span"><span class="i18n">Members</span><i class="animate" style="transform: none;"></i></span>
-        <div class="c-ripple"></div>
-      </div>
-    </nav>
-  </div>
-</div> */}
