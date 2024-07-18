@@ -1,4 +1,4 @@
-import {createEffect, onCleanup, onMount, splitProps} from 'solid-js';
+import {createEffect, onMount} from 'solid-js';
 import ColorPicker from './colorPicker';
 
 type ColorPickerTsxProps = any & {
@@ -8,51 +8,27 @@ type ColorPickerTsxProps = any & {
 export default function ColorPickerTsx(props: ColorPickerTsxProps) {
   const colorPicker = new ColorPicker();
 
-  // Split the props to extract handlers and other options
-  const [local, others] = splitProps(props, [
-    'classNames',
-    'value',
-    'onChange',
-    'class'
-  ]);
-
-  // Handle initial setup and mounting of the ColorPicker
   onMount(() => {
-    if(local.value) {
-      colorPicker.setColor(local.value);
+    if(props.onChange) {
+      colorPicker.onChange = props.onChange;
     }
 
-    if(local.onChange) {
-      colorPicker.onChange(local.onChange);
-    }
-
-
-    if(local.class) {
-      colorPicker.container.classList.add(local.class);
+    if(props.class) {
+      colorPicker.container.classList.add(props.class);
     }
   });
 
-  // Effect to update ColorPicker when props.value changes
   createEffect(() => {
-    if(local.value) {
-      colorPicker.setColor(local.value);
+    if(props.onChange) {
+      colorPicker.onChange(props.onChange);
     }
   });
 
-  // Effect to handle changes in the onChange prop
   createEffect(() => {
-    if(local.onChange) {
-      colorPicker.onChange(local.onChange);
+    if(props.class) {
+      colorPicker.container.className = props.class;
     }
   });
 
-  // Effect to update className
-  createEffect(() => {
-    if(local.class) {
-      colorPicker.container.className = local.class;
-    }
-  });
-
-  // Return the ColorPicker container
   return colorPicker.container;
 }

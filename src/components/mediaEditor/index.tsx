@@ -1,5 +1,6 @@
 import {Dynamic, Portal} from 'solid-js/web';
-import {createEffect, createSignal, For, on, onMount, splitProps} from 'solid-js';
+import {createStore, unwrap} from 'solid-js/store';
+import {createEffect, createSignal, For, on, onMount, Show, splitProps} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import {RangeSelectorTsx} from '../rangeSelectorTsx';
 import RowTsx from '../rowTsx';
@@ -8,15 +9,31 @@ import {ButtonIconTsx} from '../buttonIconTsx';
 import {Ripple} from '../rippleTsx';
 import ColorPickerTsx from '../colorPickerTsx';
 import styles from './mediaEditor.module.scss';
-import {hexToRgbaWithOpacity} from '../../helpers/color';
+import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import ButtonMenu from '../buttonMenu';
 import ButtonIcon from '../buttonIcon';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools';
 // import png from './main-canvas.png';
 import png from './main-canvas-big.png';
+import debounce from '../../helpers/schedulers/debounce';
 import {makeMediaSize} from '../../helpers/mediaSize';
 import scaleMediaElement from '../../helpers/canvas/scaleMediaElement';
-import { useAppState } from '../../stores/appState';
+import {useAppState} from '../../stores/appState';
+import {
+  applyBrightness,
+  applyContrast,
+  applyVignetteEffect,
+  applyEnhanceEffect,
+  applySaturation,
+  applyWarmth,
+  applyFade,
+  applyHighlights,
+  applySelectiveShadow,
+  applyGrain
+} from './filters';
+import {StickerEntity, StickerEntityType, TextEntityType, TransformableEntity} from './entities'
+import ColorPicker from '../colorPicker';
+
 
 // class={classNames(
 //   styles.ViewerStoryMediaAreaReactionBubbles,
@@ -28,6 +45,9 @@ import { useAppState } from '../../stores/appState';
 
 /* Navbar & Tabs */
 
+interface MediaEditorColorPickerProps {
+  onChange: (color: Pick<ReturnType<ColorPicker['getCurrentColor']>, 'rgba'>) => void;
+}
 
 const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
   const [local, others] = splitProps(props, ['label']);
@@ -59,8 +79,8 @@ const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string })
   );
 };
 
-const MediaEditorColorPicker = () => {
-  const colors = [
+const MediaEditorColorPicker = (props: MediaEditorColorPickerProps) => {
+  const COLORS = [
     '#FFFFFF',
     '#FE4438',
     '#FF8901',
@@ -69,33 +89,75 @@ const MediaEditorColorPicker = () => {
     '#62E5E0',
     '#0A84FF',
     '#BD5CF3'
-  ];
+  ] as const;
 
-  const ripplifiedColors = colors.map(color => `rgba(${hexToRgbaWithOpacity(color, 0.2).join(', ')})`);
+  type ColorPickerColor = typeof COLORS[number];
+
+  const RIPPLIFIED_COLORS = COLORS.map(color => `rgba(${hexToRgbaWithOpacity(color, 0.2).join(', ')})`);
+
+  const [currentColor, setCurrentColor] = createSignal<string>(COLORS[0]);
+
+  const [customColorTabActive, setCustomColorTabActive] = createSignal(false);
+
+  const handleColorTabClick = (hexColor: ColorPickerColor) => {
+    setCurrentColor(hexColor);
+    setCustomColorTabActive(false);
+
+    props.onChange({
+      rgba: `rgba(${hexaToRgba(hexColor).join(',')})`
+    })
+  }
+
+  const handleCustomColorToggleClick = () => {
+    setCurrentColor();
+    setCustomColorTabActive(true);
+  }
 
   return (
     <div class={styles.MediaEditorColorPicker}>
       <div class={styles.MediaEditorColorPickerTabs}>
-        <For each={colors}>
-          {(_, index) => (
-            <ButtonIconTsx style={{
-              '--color-picker-tabs-circle-color': colors[index()],
-              '--color-picker-tabs-circle-ripple-color': ripplifiedColors[index()]
-            }}>
+        <For each={COLORS}>
+          {(color, index) => (
+            <ButtonIconTsx
+              style={{
+                '--color-picker-tabs-circle-color': COLORS[index()],
+                '--color-picker-tabs-circle-ripple-color': RIPPLIFIED_COLORS[index()]
+              }}
+              onClick={() => handleColorTabClick(color)}
+              class={classNames(styles.MediaEditorColorPickerTabsButton,  currentColor() === color ? styles.Active : '')}
+              noRipple
+            >
               <div class={styles.MediaEditorColorPickerTabsCircle} />
             </ButtonIconTsx>
           )}
         </For>
 
-        <ButtonIconTsx style={{
-          '--color-picker-tabs-circle-color': colors[0],
-          '--color-picker-tabs-circle-ripple-color': ripplifiedColors[0]
-        }}>
-          <div class={styles.MediaEditorColorPickerTabsCircle} />
+        <ButtonIconTsx
+          style={{
+            '--color-picker-tabs-circle-color': COLORS[0],
+            '--color-picker-tabs-circle-ripple-color': RIPPLIFIED_COLORS[0]
+          }}
+          onClick={handleCustomColorToggleClick}
+        >
+
+          <div
+            style={{
+              '--color-picker-tabs-custom-circle-color': currentColor() ?? 'transparent'
+            }}
+            classList={{
+              [styles.MediaEditorColorPickerTabsCircle]: true,
+              [styles.MediaEditorColorPickerTabsCircleCustomColor]: true
+            }}
+          />
         </ButtonIconTsx>
       </div>
 
-      {/* <ColorPickerTsx class={styles.MediaEditorColorPickerWidget} /> */}
+      <Show when={!!customColorTabActive()}>
+        <ColorPickerTsx
+          class={styles.MediaEditorColorPickerWidget}
+          onChange={props.onChange}
+        />
+      </Show>
     </div>
   )
 };
@@ -144,53 +206,62 @@ const MediaEditorTool = (props: {svg: any; color: string; title: string}) => {
   );
 };
 
-const MediaEditorPreview = () => {
+type FilterType = 'enhance'
+  | 'brightness'
+  | 'contrast'
+  | 'saturation'
+  | 'warmth'
+  | 'fade'
+  | 'highlights'
+  | 'shadows'
+  | 'vignette'
+  | 'grain'
+  | 'sharpen';
 
+type MediaEditorTab = 'enhance'
+  | 'crop'
+  | 'text'
+  | 'brush'
+  | 'smile';
+
+type MediaEditorStateType = {
+  selectedEntityId: number;
+  entities: Array<TextEntityType | StickerEntityType>;
 };
-
-const MediaEditorMainCanvas = () => {
-
-};
-
-// protected setFullAspect(aspecter: HTMLDivElement, containerRect: DOMRect, rect: DOMRect) {
-//   /* let media = aspecter.firstElementChild;
-//   let proportion: number;
-//   if(media instanceof HTMLImageElement) {
-//     proportion = media.naturalWidth / media.naturalHeight;
-//   } else if(media instanceof HTMLVideoElement) {
-//     proportion = media.videoWidth / media.videoHeight;
-//   } */
-//   const proportion = containerRect.width / containerRect.height;
-
-//   let {width, height} = rect;
-//   /* if(proportion === 1) {
-//     aspecter.style.cssText = '';
-//   } else { */
-//   if(proportion > 0) {
-//     width = height * proportion;
-//   } else {
-//     height = width * proportion;
-//   }
-
-//   // this.log('will set style aspecter:', `width: ${width}px; height: ${height}px; transform: scale(${containerRect.width / width}, ${containerRect.height / height});`);
-
-//   aspecter.style.cssText = `width: ${width}px; height: ${height}px; transform: scale3d(${containerRect.width / width}, ${containerRect.height / height}, 1);`;
-//   // }
-// }
-
 
 export const MediaEditor = () => {
-  const [appState, setAppState] = useAppState();
-  const [activeTab, setActiveTab] = createSignal('brush');
-
-  const handleTabClick = (tab: string) => {
-    setActiveTab(tab);
-  };
-
   let previewRef: HTMLDivElement;
-  let originalImageRef: HTMLImageElement;
   let filterLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
+
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('text');
+
+  const initialState: MediaEditorStateType = {
+    selectedEntityId : -1,
+    entities: [
+      {
+        id: 0,
+        x: 100,
+        y: 100,
+        width: 300,
+        height: 100,
+        type: 'text',
+        textAlign: 'left',
+        appearance: 'plain',
+        backgroundColor: '',
+        fontSize: 32,
+        fontFamily: 'Roboto',
+        color: '#fff',
+        rotate: 0
+      }
+    ]
+  }
+
+  const [state, setState] = createStore<MediaEditorStateType>(initialState);
+
+  const handleTabClick = (tab: MediaEditorTab) => {
+    setActiveTab(tab);
+  };
 
   function getScaledImageSize(previewRef: any, originalImageRef: any): { width: number, height: number } {
     const previewWidth = previewRef.clientWidth;
@@ -213,31 +284,16 @@ export const MediaEditor = () => {
 
     // Возвращаем новые размеры
     return {
-      width: newWidth, height: newHeight
+      width: newWidth,
+      height: newHeight
     };
   }
 
   onMount(() => {
-    // previewRef.clientWidth:  1685
-    // previewRef.clientHeight:  699
-
-    // originalImageRef.clientWidth:  2616
-    // originalImageRef.clientHeight:  3488
-
-    // originalImageAspectRatio:  0.75
-
     const image = new Image();
 
     image.addEventListener('load', async() => {
-      console.log('image: ', image.naturalWidth);
-      console.log('image height: ', image.naturalHeight);
-
       const dimensions = getScaledImageSize(previewRef, image);
-
-      console.log(dimensions);
-
-      // originalImageRef.style.width = `${dimensions.width}px`;
-      // originalImageRef.style.height = `${dimensions.height}px`;
 
       previewRef.style.width = `${dimensions.width}px`;
       previewRef.style.height = `${dimensions.height}px`;
@@ -245,21 +301,137 @@ export const MediaEditor = () => {
       filterLayerCanvas.width = dimensions.width;
       filterLayerCanvas.height = dimensions.height;
 
+      drawingLayerCanvas.width = dimensions.width;
+      drawingLayerCanvas.height = dimensions.height;
+
       const ctx = filterLayerCanvas.getContext('2d');
       ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+
+      const drawingCtx = drawingLayerCanvas.getContext('2d');
+      drawingCtx.fillStyle = 'blue';
+      drawingCtx.fillRect(0, 0, 400, 800);
     });
 
     image.src = png;
   });
 
+  // * Handlers
+  const handleFilterUpdate = (type: FilterType) => {
+    const FILTER_DEBOUNCE_MS = 300;
+
+    return (value: number) => {
+      const filterMap: Record<FilterType, () => void> = {
+        enhance: debounce(() => applyEnhanceEffect(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        brightness: debounce(() => applyBrightness(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        contrast: debounce(() => applyContrast(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        fade: debounce(() => applyFade(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        grain: debounce(() => applyGrain(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        highlights: debounce(() => applyHighlights(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        saturation: debounce(() => applySaturation(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        shadows: debounce(() => applySelectiveShadow(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        sharpen: debounce(() => applyVignetteEffect(filterLayerCanvas, value), FILTER_DEBOUNCE_MS, true, false),
+        vignette: debounce(() => {}, FILTER_DEBOUNCE_MS),
+        warmth: debounce(() => applyWarmth(filterLayerCanvas, value), FILTER_DEBOUNCE_MS)
+      }
+
+      filterMap[type]();
+    };
+  };
+
+  // * Entity Handlers
+  const selectEntity = (id: number) => {
+    setState({selectedEntityId: id});
+  };
+
+  // * Text Handlers
+  const addTextEntity = () => {
+    setState('entities', state.entities.length, {
+      id: state.entities.length,
+      x: 100,
+      y: 200,
+      fontSize: 24,
+      rotate: 0,
+      textAlign: 'left',
+      backgroundColor: '',
+      color: 'white',
+      type: 'text',
+      appearance: 'plain',
+      height: 'auto',
+      width: 'auto'
+    });
+  };
+
+  const deleteTextEntity = () => {
+    setState({
+      entities: state.entities.filter(entity => entity.id !== state.selectedEntityId)
+    });
+  };
+
+  const setTextEntityFont = (fontFamily: TextEntityType['fontFamily']) => {
+    setState('entities', state.selectedEntityId, {fontFamily})
+  }
+
+  const setTextEntityFontSize = (fontSize: TextEntityType['fontSize']) => {
+    setState('entities', state.selectedEntityId, {fontSize})
+  }
+
+  const setTextEntityFontColor = (color: TextEntityType['color']) => {
+    setState('entities', state.selectedEntityId, {color})
+  }
+
+  const setTextEntityTextAlign = (textAlign: TextEntityType['textAlign']) => {
+    setState('entities', state.selectedEntityId, {textAlign})
+  }
+
+  createEffect(() => {
+    console.log('state: ', state.entities.length, unwrap(state));
+  });
+
   return (
     <div class={styles.MediaEditor}>
       <div class={styles.MediaEditorContainer}>
-        <div class={styles.MediaEditorPreview} ref={previewRef}>
-          <canvas ref={drawingLayerCanvas}/>
-          <canvas ref={filterLayerCanvas}/>
+        <div class={styles.MediaEditorPreview}>
+          <div class={styles.MediaEditorPreviewContent} ref={previewRef}>
+            <For each={state.entities}>
+              {(entity) => {
+                return (
+                  <TransformableEntity
+                    previewRef={previewRef}
+                    id={entity.id}
+                    x={entity.x}
+                    y={entity.y}
+                    isSelected={entity.id === state.selectedEntityId}
+                    onMove={({x, y}) => {
+                      if(entity.id !== state.selectedEntityId) {
+                        selectEntity(entity.id);
+                      }
 
-          {/* <img src={png} ref={originalImageRef} /> */}
+                      setState('entities', entity.id, {x, y});
+                    }}
+                    controls={[
+                      <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
+                    ]}
+                  >
+                    <div contentEditable="plaintext-only" style={{
+                      'text-align': (entity as TextEntityType)?.textAlign,
+                      'font-family': (entity as TextEntityType)?.fontFamily,
+                      'font-size': (entity as TextEntityType)?.fontSize + 'px',
+                      'color': (entity as TextEntityType)?.color
+
+                      // text shadow
+                      // 'text-shadow': '-2px 0 black, 0 2px black, 2px 0 black, 0 -2px black'
+                      // backgroundColor: red
+                    }} class={styles.Text}>
+                      Контент будет здесь, тест
+                    </div>
+                  </TransformableEntity>
+                )
+              }}
+            </For>
+
+            <canvas class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)} ref={drawingLayerCanvas} />
+            <canvas class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)} ref={filterLayerCanvas} />
+          </div>
         </div>
 
         <div class={styles.MediaEditorSidebar}>
@@ -309,19 +481,90 @@ export const MediaEditor = () => {
               {activeTab() === 'enhance' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
                   <div class={styles.MediaEditorSidebarTabsContentTabPanelFilter}>
-                    <MediaEditorRangeSelector label="Enhance" min={0} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Brightness" min={-1} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Contrast" min={-1} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Saturation" min={-1} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Warmth" min={-1} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Fade" min={0} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Highlights" min={0} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Shadows" min={-1} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Vignette" min={0} max={1} step={0.01} value={0} />
-                    <MediaEditorRangeSelector label="Grain" min={0} max={1} step={0.01} value={0} />
+                    <MediaEditorRangeSelector
+                      label="Enhance"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('enhance')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Brightness"
+                      min={-1}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('brightness')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Contrast"
+                      min={-1}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('contrast')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Saturation"
+                      min={-1}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('saturation')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Warmth"
+                      min={-1}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('warmth')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Fade"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('fade')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Highlights"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('highlights')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Shadows"
+                      min={-1}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('shadows')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Vignette"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('vignette')}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Grain"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleFilterUpdate('grain')}
+                    />
                   </div>
                 </div>
               )}
+
               {activeTab() === 'crop' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
                   <div class={styles.MediaEditorSidebarSectionHeader}>
@@ -389,64 +632,102 @@ export const MediaEditor = () => {
               {activeTab() === 'text' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
                   <div class={styles.MediaEditorSidebarTabsContentTabPanelText}>
-                    <MediaEditorColorPicker />
+                    <div class={styles.MediaEditorSidebarTabsContentTabPanelTextRow}>
+                      <MediaEditorColorPicker onChange={(color) => setTextEntityFontColor(color.rgba)} />
+                    </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelTextRow}>
                       <div class={styles.MediaEditorSidebarTabsContentTabPanelTextCol}>
                         <ButtonIconTsx
                           icon="text_align_left"
-                          noRipple={true}
+                          class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.textAlign === 'left' && styles.Active)}
+                          onClick={() => {
+                            setTextEntityTextAlign('left')
+                          }}
                         />
 
                         <ButtonIconTsx
                           icon="text_align_centre"
-                          noRipple={true}
+                          class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.textAlign === 'center' && styles.Active)}
+                          onClick={() => {
+                            setTextEntityTextAlign('center')
+                          }}
                         />
 
                         <ButtonIconTsx
                           icon="text_align_right"
-                          noRipple={true}
+                          class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.textAlign === 'right' && styles.Active)}
+                          onClick={() => {
+                            setTextEntityTextAlign('right')
+                          }}
                         />
                       </div>
 
                       <div class={styles.MediaEditorSidebarTabsContentTabPanelTextCol}>
                         <ButtonIconTsx
                           icon="font_no_frame"
-                          noRipple={true}
+                          class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.appearance === 'plain' && styles.Active)}
+                          onClick={() => {
+                            // setEntities((value) => {
+                            //   return value.map((item, idx) => idx === selectedEntityId() ? {...item, appearance: 'plain'} : item);
+                            // })
+                          }}
                         />
 
                         <ButtonIconTsx
                           icon="font_black"
-                          noRipple={true}
+                          class={classNames(styles.Button, styles.ButtonMediumSize, (state.entities[state.selectedEntityId] as TextEntityType)?.appearance === 'border' && styles.Active)}
+                          onClick={() => {
+                            // setEntities((value) => {
+                            // return value.map((item, idx) => idx === selectedEntityId() ? {...item, appearance: 'border'} : item);
+                            // })
+                          }}
                         />
 
                         <ButtonIconTsx
                           icon="font_white"
-                          noRipple={true}
+                          class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.appearance === 'background' && styles.Active)}
+                          onClick={() => {
+                            // setEntities((value) => {
+                            // return value.map((item, idx) => idx === selectedEntityId() ? {...item, appearance: 'background'} : item);
+                            // })
+                          }}
                         />
                       </div>
                     </div>
 
-                    <MediaEditorRangeSelector label="Size" min={10} max={48} step={1} value={14} />
+                    <MediaEditorRangeSelector
+                      label="Size"
+                      min={10}
+                      max={64}
+                      step={1}
+                      value={16}
+                      onScrub={(value) => setTextEntityFontSize(value)}
+                    />
 
                     <div class={styles.MediaEditorSidebarSectionHeader}>
-                      Aspect ratio
+                      Controls
                     </div>
 
-                    <RowTsx title='Roboto' clickable={() => true} />
-                    <RowTsx title='Typewriter' clickable={() => true} />
-                    <RowTsx title='Avenir Next' clickable={() => true} />
-                    <RowTsx title='Courier New' clickable={() => true} />
-                    <RowTsx title='Noteworthy' clickable={() => true} />
-                    <RowTsx title='Georgia' clickable={() => true} />
-                    <RowTsx title='Papyrus' clickable={() => true} />
-                    <RowTsx title='Snell Roundhand' clickable={() => true} />
+                    <RowTsx title='Add text' clickable={addTextEntity} />
+                    <RowTsx title='Remove text' clickable={() => true} />
+
+                    <div class={styles.MediaEditorSidebarSectionHeader}>
+                      Font
+                    </div>
+
+                    <RowTsx title='Roboto' clickable={() => setTextEntityFont('Roboto')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowRoboto]} />
+                    <RowTsx title='Courier New' clickable={() => setTextEntityFont('Courier New')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowCourierNew]} />
+                    <RowTsx title='Georgia' clickable={() => setTextEntityFont('Georgia')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowGeorgia]} />
+                    <RowTsx title='Times New Roman' clickable={() => setTextEntityFont('Times New Roman')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowTimesNewRoman]} />
+                    <RowTsx title='Trebuchet MS' clickable={() => setTextEntityFont('Trebuchet MS')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowTrebuchetMS]} />
+                    <RowTsx title='Comic Sans' clickable={() => setTextEntityFont('Comic Sans MS')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowComicSans]} />
                   </div>
                 </div>
               )}
+
               {activeTab() === 'brush' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
-
                   <MediaEditorRangeSelector label="Size" min={10} max={48} step={1} value={14} />
 
                   <div class={styles.MediaEditorSidebarSectionHeader}>
@@ -461,6 +742,7 @@ export const MediaEditor = () => {
                   <MediaEditorTool title="Eraser" svg={<EraserSvg />} color="blue" />
                 </div>
               )}
+
               {activeTab() === 'smile' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
                   <h1>STICKERS</h1>

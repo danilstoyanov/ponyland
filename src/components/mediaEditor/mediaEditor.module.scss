@@ -7,16 +7,8 @@
 @import "../../scss/mixins";
 @import "../../scss/variables";
 
-$shadow: 0px 0 3px rgba(0, 0, 0, 0.20);
-$color-inactive: rgba(255, 255, 255, .5);
-
-// styles.MediaEditor
-// styles.MediaEditorContainer
-// styles.MediaEditorBackground
-
 .MediaEditor {
   --sidebar-width: 400px;
-
   position: fixed;
   top: 0;
   right: 0;
@@ -33,8 +25,24 @@ $color-inactive: rgba(255, 255, 255, .5);
     flex-grow: 1;
     background-color: #000000;
 
-    &Canvas {
+    &Content {
+      width: 100%;
       height: 100%;
+      position: relative;
+    }
+
+    &Layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    &DrawingLayer {
+      z-index: 2;
+    }
+
+    &FilterLayer {
+      z-index: 1;
     }
   }
 
@@ -115,6 +123,7 @@ $color-inactive: rgba(255, 255, 255, .5);
           position: relative;
           width: 48px;
           height: 48px;
+          border-radius: 10px !important;
 
           &.active {
             color: var(--primary-color);
@@ -220,7 +229,17 @@ $color-inactive: rgba(255, 255, 255, .5);
       display: flex;
       gap: 6px;
 
-      &Tab {}
+      &Button {
+        transition: .3s ease;
+      }
+
+      &Button:hover &Cirle {
+        background-color: var(--color-picker-tabs-circle-ripple-color);
+      }
+
+      &Button.Active {
+        background-color: var(--color-picker-tabs-circle-ripple-color);
+      }
 
       &Circle {
         flex-shrink: 0;
@@ -232,6 +251,23 @@ $color-inactive: rgba(255, 255, 255, .5);
         ~ * {
           --ripple-color: var(--color-picker-tabs-circle-ripple-color);
         }
+      }
+
+      &CircleCustomColor {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAOTSURBVHgBbZS9ciNFFIXPHfWMRqMZ/Xgte8kEEQlVfgAiXsC7b+CMjcBFSGI724AqiowMBwSwCVoegIgMAldtQIgoqnZtS7YkS5rR/EjN6R7J2Gt31ak7M9399b2nu0fwSNM4bMG9fAZ3uA+53INz0UU4A3b1GXaWfWwVr+Wn/PSxufIA5n1D0Ph7BONd+NeAR6lLoE7gzhLYzoDWAmjHfXSyE/niPvgeUFd//Rb10SEaN0BIBRvgADbDnQLYMsAYaPLdjGvFx7K/ONkw1C3Mf3OE6OYQbZeDAiCqMasqUKUUh0UEdAhsp+yfE8b+yKNGx/oNqvLJ4uvbDLU7OkC0+AHbU+AJJ7YZmybLCVAbgV7ymd+2DTBZZ8e+kH3RFcV+f/Zc2lnPAuNI/+1v513psJQNtGWgnBSMCTSTzPe8LNeU2iAsHFqt6gOk7vAixexj9ZerDwY+ulHdRT1qwGuyxDZLfsKSWrWy9CpLCyP6l5YLhbSFr6gXyKoZ5pJgivnuDOlzNVDYD3wgISOsC6LIR9DwoFr+GsoYeOWmmHIjLhgCRS1H7CSYYU5YjdFHDPWZOq+gW+f4mEo4NuH8MHAIDlBre3AMtOlruynRRFaBRqLSO6Cq1RQeo/OpOhfsRdzEeCP3f3hUUwibka7umKwC+gQ9k1imFuISotaq8N1Ep6vOaQXXtpbMHnkONaTlehqeiwkPBR202vSX73L7Tb1boR8W6E55IkIjbmTIsxvS/wZjm4N4L0QgeoKVjJDhBqbknCqo5ToW9FDO1NsVzoIcXQMJCAnpe0jC1orGV4AlFZf3SWI4zLICHhSMuMwUCZ1cUJldIEb+j3pb4LWX4FnA4xVSLWbZIUTMHWLkGnSsbKktrUKYiyvGK2Y1ImZulRBb9NS/OXoqxssow27HIYgbUiFME5YzM14yTi9bTmCZpYMxN2HMniG/Da0Fi/5A8lM1how9X79YufjFXcNMZkvCFwT6chdo/TTHw5ZuMp3wuEzsjvsnsHvOll1Jb/6R/s5R+NLACsJSgmYGeOcPUjAbU/acullDr9kbIzjJZXB672+T/iGH8qEerxwcZQQmhNXW/plBmlqaxc3dJ9BkaaAx/JcL+fP4we/LtMUrOV5+pftpBUdzQddk54l1wLYSKCzbenmRw3uRyc+9u4wHf+xNc1/pA/UU+5UP0JWn2NO8yxoX/RXOfy/w7rcc1z9CPs/fn/cf2RZ93AFGcTcAAAAASUVORK5CYII=');
+        background-color: transparent;
+
+        // &::after {
+        //   content: '';
+        //   width: 14px;
+        //   height: 14px;
+        //   border-radius: 50%;
+        //   border: 2px solid var(--color-picker-tabs-custom-circle-color, 'white');
+        //   background-color: var(--color-picker-tabs-custom-circle-color);
+        // }
       }
     }
 
@@ -263,6 +299,36 @@ $color-inactive: rgba(255, 255, 255, .5);
         flex: unset;
       }
     }
+  }
+
+  &FontRow {}
+
+  &FontRowRoboto {
+    font-family: 'Roboto';
+  }
+
+  &FontRowCourierNew {
+    font-family: 'Courier New';
+    font-weight: 700;
+  }
+
+  &FontRowGeorgia {
+    font-family: 'Georgia';
+    font-weight: 700;
+  }
+
+  &FontRowTimesNewRoman {
+    font-family: 'Times New Roman';
+    font-weight: 700;
+  }
+
+  &FontRowTrebuchetMS {
+    font-family: 'Trebuchet MS';
+  }
+
+  &FontRowComicSans {
+    font-family: 'Comic Sans MS';
+    font-weight: 700;
   }
 }
 
@@ -308,79 +374,109 @@ $color-inactive: rgba(255, 255, 255, .5);
   }
 }
 
-// &.isFull {
-//   .ViewerBackground {
-//     background-color: #000;
-//   }
+.TransformableEntity {
+  position: relative;
+  z-index: 3;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  position: absolute;
+  padding: 8px;
+  color: white;
 
-//   &.isReady {
-//     perspective: 1000px;
-//     transform-style: preserve-3d;
-//     overflow: hidden; // magic property
-//   }
+  &Selected {
+    background-color: red;
+  }
 
-//   &.isReady .ViewerStoryContainer {
-//     --transition-time: .3s;
-//     --transition: var(--transition-standard-easing) var(--transition-time);
-//     visibility: hidden;
-//     opacity: 0;
-//     // height: 100%;
-//     margin: 0;
-//     transition-delay: 0s, 0s, var(--transition-time);
+  &Corner {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #fff;
+  }
 
-//     @include animation-level-global(2) {
-//       transition: opacity var(--transition-time), transform var(--transition-time), visibility var(--transition-time);
-//     }
+  &Controls {
+    --secondary-text-color: #fff;
+    bottom: 0;
+    position: absolute;
+    display: flex;
+    padding: 4px;
+    backdrop-filter: blur(16px);
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.2);
+    left: calc(50% - 24px);
+    bottom: -64px;
+  }
 
-//     &.fromLeft {
-//       transform: rotateY(90deg) translateX(50%) rotateY(-90deg) translateX(-50%) rotateY(-90deg);
+  &CornerHandle {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+  }
 
-//       &.current {
-//         transform: rotateY(90deg) translateX(50%) rotateY(0deg) translateX(-50%) rotateY(-90deg);
-//       }
-//     }
+  &CornerHandle.TopLeft {
+    top: -20px;
+    left: -20px;
+  }
 
-//     &.current {
-//       opacity: 1;
-//       visibility: visible;
-//       transition-delay: 0s, 0s, 0s;
-//     }
+  &CornerHandle.TopLeft &Corner {
+    bottom: 0;
+    right: 0;
+  }
 
-//     &.fromRight {
-//       transform: rotateY(-90deg) translateX(-50%) rotateY(90deg) translateX(50%) rotateY(90deg);
+  &CornerHandle.TopLeft {
+    top: -20px;
+    right: -20px;
+  }
 
-//       &.current {
-//         transform: rotateY(-90deg) translateX(-50%) rotateY(0deg) translateX(50%) rotateY(90deg);
-//       }
-//     }
-//   }
+  &CornerHandle.TopRight {
+    top: -20px;
+    right: -20px;
+  }
 
-//   :global(.stories-input) {
-//     --chat-input-padding: .5rem;
-//     --chat-input-background-color: #212121;
-//     --chat-input-focus-offset: 0px;
-//     --backdrop-filter: unset;
-//   }
+  &CornerHandle.TopRight &Corner {
+    left: 0;
+    bottom: 0;
+  }
 
-//   // .ViewerStory {
-//   //   height: 100%;
-//   //   // aspect-ratio: unset;
-//   // }
+  &CornerHandle.BottomLeft {
+    bottom: -20px;
+    left: -20px;
+  }
 
-//   // .ViewerStory,
-//   // .ViewerStoryContent,
-//   // .ViewerStoryContentMedia {
-//   //   border-radius: #{$border-radius-medium};
-//   // }
+  &CornerHandle.BottomLeft &Corner {
+    right: 0;
+  }
 
-//   // .ViewerStoryContent {
-//   //   aspect-ratio: inherit;
-//   //   overflow: hidden;
-//   //   top: 50%;
-//   //   transform: translateY(-50%);
-//   // }
+  &CornerHandle.BottomRight {
+    bottom: -20px;
+    right: -20px;
+  }
 
-//   // :global(.stories-input) {
-//   //   bottom: .5rem;
-//   // }
-// }
+  &CornerHandle.BottomRight &Corner {
+    left: 0;
+    top: 0;
+  }
+}
+
+.Text {
+  // display: inline;
+  // background-color: green;
+  border-radius: 8px;
+  // line-height: 1;
+}
+
+.Button {
+  color: var(--white);
+  border-radius: 10px !important;
+  padding: 0.75rem 0.9375rem;
+}
+
+.Button.Active {
+  background-color: var(--light-secondary-text-color);
+}
+
+// ! this is workaround cause import of this Icon from Figma works incorrectly, so we apply this extra class
+.Button.ButtonMediumSize {
+  font-size: 16px;
+}
+
