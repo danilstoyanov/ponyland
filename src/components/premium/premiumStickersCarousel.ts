@@ -15,7 +15,8 @@ import {STICKER_EFFECT_MULTIPLIER} from '../wrappers/sticker';
 import {Document} from '../../layer';
 import {EMOTICONSSTICKERGROUP} from '../emoticonsDropdown';
 
-const ANIMATION_GROUP: AnimationItemGroup = EMOTICONSSTICKERGROUP;
+// ЭТО НЕ ИСПОЛЬЗУЕТСЯ, ТАКЖЕ КОСТЫЛЬ ДЛЯ ТАБОВ СО СТИКЕРАМИ
+// const ANIMATION_GROUP: AnimationItemGroup = EMOTICONSSTICKERGROUP;
 
 export default class PremiumStickersCarousel {
   private superStickerRenderer: SuperStickerRenderer;

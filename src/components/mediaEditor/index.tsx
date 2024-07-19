@@ -1,13 +1,14 @@
-import {Dynamic, Portal} from 'solid-js/web';
+import {Portal} from 'solid-js/web';
 import {createStore, unwrap} from 'solid-js/store';
+import {ChatType} from '../chat/chat';
 import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import {RangeSelectorTsx} from '../rangeSelectorTsx';
 import RowTsx from '../rowTsx';
 import type {RangeSelectorProps} from '../rangeSelectorTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
-import {Ripple} from '../rippleTsx';
 import ColorPickerTsx from '../colorPickerTsx';
+import rootScope from '../../lib/rootScope';
 import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
@@ -15,8 +16,6 @@ import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './to
 // import png from './main-canvas.png';
 import png from './main-canvas-big.png';
 import debounce from '../../helpers/schedulers/debounce';
-import {makeMediaSize} from '../../helpers/mediaSize';
-import scaleMediaElement from '../../helpers/canvas/scaleMediaElement';
 import {useAppState} from '../../stores/appState';
 import {
   applyBrightness,
@@ -33,7 +32,8 @@ import {
 import {StickerEntityType, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, EraserTool} from './drawing';
-
+import StickersTab from './sticker-tab';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -232,10 +232,10 @@ type MediaEditorStateType = {
 
 export const MediaEditor = () => {
   let previewRef: HTMLDivElement;
+  let stickerTabRef: HTMLDivElement;
   let filterLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
   let DrawingManagerInstance: DrawingManager;
-
 
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
@@ -303,7 +303,7 @@ export const MediaEditor = () => {
     ]
   }
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
 
@@ -457,7 +457,23 @@ export const MediaEditor = () => {
       drawingCtx.fillRect(0, 0, 400, 800);
 
       DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewRef);
-      DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size)
+      DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
+
+      console.log(rootScope.managers, 'rootScope.managers', rootScope.managers.apiFileManager);
+
+      // rootScope.managers.
+
+      appDownloadManager.construct(rootScope.managers);
+
+      const stickers = new StickersTab(rootScope.managers);
+      stickers.init();
+
+      stickerTabRef.appendChild(stickers.container);
+
+      console.log('stickers: ', stickers);
+
+      // const node = createSearch();
+      // console.log('node: ', node);
     });
 
     image.src = png;
@@ -873,7 +889,7 @@ export const MediaEditor = () => {
               )}
 
               {activeTab() === 'smile' && (
-                <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
+                <div class={styles.MediaEditorSidebarTabsContentTabPanel} ref={stickerTabRef}>
                   <h1>STICKERS</h1>
                 </div>
               )}

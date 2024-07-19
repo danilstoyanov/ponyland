@@ -105,7 +105,7 @@ import getPeerActiveUsernames from '../../lib/appManagers/utils/peers/getPeerAct
 import replaceContent from '../../helpers/dom/replaceContent';
 import getTextWidth from '../../helpers/canvas/getTextWidth';
 import {FontFull} from '../../config/font';
-import {ChatType} from './chat';
+// import {ChatType} from './chat';
 import deferredPromise, {CancellablePromise} from '../../helpers/cancellablePromise';
 import idleController from '../../helpers/idleController';
 import Icon from '../icon';
@@ -129,6 +129,16 @@ import SelectedEffect from './selectedEffect';
 import windowSize from '../../helpers/windowSize';
 
 // console.log('Recorder', Recorder);
+
+enum ChatType {
+  Chat = 'chat',
+  Pinned = 'pinned',
+  Discussion = 'discussion',
+  Scheduled = 'scheduled',
+  Stories = 'stories',
+  Saved = 'saved',
+  Search = 'search'
+};
 
 const RECORD_MIN_TIME = 500;
 const REPLY_IN_TOPIC = false;
