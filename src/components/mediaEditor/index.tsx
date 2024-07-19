@@ -29,7 +29,7 @@ import {
   applySelectiveShadow,
   applyGrain
 } from './filters';
-import {StickerEntityType, TextEntityType, TransformableEntity} from './entities'
+import {isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, EraserTool} from './drawing';
 import StickersTab from './sticker-tab';
@@ -238,6 +238,31 @@ export const MediaEditor = () => {
   let drawingLayerCanvas: HTMLCanvasElement;
   let DrawingManagerInstance: DrawingManager;
 
+  function createRandomColorImage() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+
+    const ctx = canvas.getContext('2d');
+
+    // Generate a random color
+    const r = Math.floor(Math.random() * 256);
+    const g = Math.floor(Math.random() * 256);
+    const b = Math.floor(Math.random() * 256);
+
+    // Set the fill color and fill the canvas
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, 128, 128);
+
+    // Create a new image
+    const img = new Image(128, 128);
+    img.src = canvas.toDataURL();
+
+    return img;
+  }
+
+  const randomColorImage = createRandomColorImage();
+
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
     selectedToolId: 0,
@@ -300,6 +325,32 @@ export const MediaEditor = () => {
         fontFamily: 'Roboto',
         color: '#fff',
         rotate: 0
+      },
+      {
+        id: 1,
+        x: 200,
+        y: 150,
+        width: 200,
+        height: 100,
+        type: 'text',
+        textAlign: 'left',
+        appearance: 'plain',
+        backgroundColor: '',
+        fontSize: 32,
+        fontFamily: 'Roboto',
+        color: '#fff',
+        rotate: 0
+      },
+      {
+        id: 2,
+        x: 300,
+        y: 300,
+        width: 200,
+        height: 200,
+        type: 'sticker',
+        color: '#fff',
+        rotate: 0,
+        node: randomColorImage
       }
     ]
   }
@@ -342,12 +393,58 @@ export const MediaEditor = () => {
   const renderMedia = () => {
     alert('render media');
 
-    /*
-      порядок рендеринга, пока не учитываем обрезку
+    // Создаем новый канвас для результирующего изображения
+    const resultCanvas = document.createElement('canvas');
+    resultCanvas.width = filterLayerCanvas.width;
+    resultCanvas.height = filterLayerCanvas.height;
+    const resultCtx = resultCanvas.getContext('2d');
 
-      1 слой с фото соединяем со слоем для рисования
-    */
+    // Рендерим основной слой
+    resultCtx.drawImage(filterLayerCanvas, 0, 0);
+
+    // Рендерим слой рисования без прозрачности
+    resultCtx.drawImage(drawingLayerCanvas, 0, 0);
+
+    // Рендерим стикеры
+    state.entities.forEach(entity => {
+      if(isStickerEntity(entity)) {
+        resultCtx.drawImage(
+          entity.node, // Assuming randomColorImage is an image element
+          entity.x,
+          entity.y,
+          entity.width,
+          entity.height
+        );
+      }
+    });
+
+    // Рендерим текстовые ноды
+    state.entities.forEach(entity => {
+      if(isTextEntity(entity)) {
+        resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+        resultCtx.fillStyle = entity.color;
+        resultCtx.textAlign = entity.textAlign;
+        resultCtx.save();
+        resultCtx.translate(entity.x + entity.width / 2, entity.y + entity.height / 2);
+        resultCtx.rotate((entity.rotate * Math.PI) / 180);
+        resultCtx.fillText(
+          'Your Text Here', // Replace with the actual text if available in the entity object
+          -entity.width / 2,
+          entity.fontSize / 2
+        );
+        resultCtx.restore();
+      }
+    });
+
+    // Преобразуем канвас в изображение и скачиваем его
+    resultCanvas.toBlob((blob) => {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'result.png';
+      link.click();
+    });
   };
+
 
   // * Handlers
   const handleFilterUpdate = (type: FilterType) => {
@@ -392,6 +489,19 @@ export const MediaEditor = () => {
   // * Entity Handlers
   const selectEntity = (id: number) => {
     setState({selectedEntityId: id});
+  };
+
+  const addStickerEntity = (target: any) => {
+    setState('entities', state.entities.length, {
+      id: state.entities.length,
+      x: 100,
+      y: 200,
+      width: 200,
+      height: 200,
+      rotate: 0,
+      type: 'sticker',
+      node: target.children[0].cloneNode(true)
+    });
   };
 
   // * Text Entity Handlers
@@ -468,17 +578,12 @@ export const MediaEditor = () => {
       // stickers.init();
 
       const stickers = EmoticonsDropdown.getElement();
-      EmoticonsDropdown.init();
 
-      // EmoticonsDropdown?.toggle(true);
-      console.log('stickers: ', stickers);
+      EmoticonsDropdown.init((target: any) => {
+        addStickerEntity(target);
+      });
 
       stickerTabRef.appendChild(stickers);
-
-      // console.log('stickers: ', stickers);
-
-      // const node = createSearch();
-      // console.log('node: ', node);
     });
 
     image.src = png;
@@ -497,6 +602,8 @@ export const MediaEditor = () => {
                     id={entity.id}
                     x={entity.x}
                     y={entity.y}
+                    width={entity.width}
+                    height={entity.height}
                     isSelected={entity.id === state.selectedEntityId}
                     onMove={({x, y}) => {
                       if(entity.id !== state.selectedEntityId) {
@@ -509,18 +616,11 @@ export const MediaEditor = () => {
                       <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
                     ]}
                   >
-                    <div contentEditable="plaintext-only" style={{
-                      'text-align': (entity as TextEntityType)?.textAlign,
-                      'font-family': (entity as TextEntityType)?.fontFamily,
-                      'font-size': (entity as TextEntityType)?.fontSize + 'px',
-                      'color': (entity as TextEntityType)?.color
-
-                      // text shadow
-                      // 'text-shadow': '-2px 0 black, 0 2px black, 2px 0 black, 0 -2px black'
-                      // backgroundColor: red
-                    }} class={styles.Text}>
-                      Контент будет здесь, тест
-                    </div>
+                    {isTextEntity(entity) ? (
+                      <TextEntity {...entity} />
+                    ) : (
+                      <StickerEntity {...entity} />
+                    )}
                   </TransformableEntity>
                 )
               }}
@@ -896,6 +996,12 @@ export const MediaEditor = () => {
               {activeTab() === 'smile' && (
                 <div class={classNames(styles.MediaEditorSidebarTabsContentTabPanel, styles.Stickers)} ref={stickerTabRef}>
                   <h1>STICKERS</h1>
+                  <button
+                    style={{padding: '16px', background: 'blue'}}
+                    onClick={renderMedia}
+                  >
+                    RENDER IMAGE
+                  </button>
                 </div>
               )}
             </div>

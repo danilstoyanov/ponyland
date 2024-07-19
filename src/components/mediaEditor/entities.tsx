@@ -15,8 +15,6 @@ interface MediaEditorEntity {
   rotate: 0;
 };
 
-export interface StickerEntityType extends MediaEditorEntity {}
-
 type TextEntityFontFamily = 'Roboto'
   | 'Courier New'
   | 'Georgia'
@@ -36,12 +34,18 @@ export interface TextEntityType extends MediaEditorEntity {
   backgroundColor: string;
   textAlign: TextEntityAlignment;
   fontFamily: TextEntityFontFamily;
+};
+
+export interface StickerEntityType extends MediaEditorEntity {
+  node: HTMLImageElement;
 }
 
 interface TransformableEntityProps {
   id: number;
   x: number;
   y: number;
+  width: number | 'auto';
+  height: number | 'auto';
   isSelected: boolean;
   previewRef: HTMLDivElement;
   children: JSX.Element;
@@ -112,7 +116,13 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
     <div
       ref={transformarableEntityRef}
       class={`${styles.TransformableEntity} ${props.isSelected ? styles.TransformableEntitySelected : ''}`}
-      style={{transform: `translateX(${props.x}px) translateY(${props.y}px)`}}
+      style={
+        {
+          transform: `translateX(${props.x}px) translateY(${props.y}px)`,
+          width: typeof props.width === 'string' ? props.width : `${props.width}px`,
+          height: typeof props.height === 'string' ? props.height : `${props.height}px`
+        }
+      }
     >
       {props.isSelected && (
         <>
@@ -140,6 +150,25 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
   );
 };
 
-export const TextEntity = () => {};
+export const TextEntity = (props: TextEntityType) => {
+  return (
+    <div contentEditable="plaintext-only" style={{
+      'text-align': props.textAlign,
+      'font-family': props.fontFamily,
+      'font-size': props.fontSize + 'px',
+      'color': props.color,
+      // text shadow
+      'text-shadow': '-2px 0 black, 0 2px black, 2px 0 black, 0 -2px black'
+    }} class={styles.TextEntity}>
+      New Text
+    </div>
+  )
+};
 
-export const StickerEntity = () => {};
+export const StickerEntity = (props: StickerEntityType) => {
+  return (
+    <div class={styles.TextEntity}>
+      {props.node};
+    </div>
+  )
+};

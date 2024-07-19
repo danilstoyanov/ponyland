@@ -93,6 +93,7 @@ export const EMOJI_TEXT_COLOR = 'primary-text-color';
 
 export class EmoticonsDropdown {
   public lazyLoadQueue = new LazyLoadQueue(1);
+  private handleStickerClick: any;
 
   private container: HTMLElement;
   private tabsEl: HTMLElement;
@@ -112,19 +113,11 @@ export class EmoticonsDropdown {
 
   public textColor: string;
 
-  public isStandalone: boolean;
-
   public element: HTMLElement;
 
   constructor() {
     this.listenerSetter = new ListenerSetter();
     this.element = renderEmojiDropdownElement();
-
-    this.element.classList.toggle('is-standalone', this.isStandalone);
-  }
-
-  public canUseEmoji(emoji: AppEmoji, showToast?: boolean) {
-    this.init?.();
   }
 
   public get tab() {
@@ -135,17 +128,13 @@ export class EmoticonsDropdown {
     return {root: this.getElement()};
   }
 
-  public setTextColor(textColor: string = EMOJI_TEXT_COLOR) {
-    this.textColor = textColor;
-    // this.getTab(EmojiTab)?.setTextColor(textColor);
-  }
-
   public getTab<T extends EmoticonsTab>(instance: EmoticonsTabConstructable<T>) {
     return this.tabsToRender.find((tab) => tab instanceof instance) as T;
   }
 
-  public init() {
+  public init(handleStickerClick: any) {
     this.managers = rootScope.managers;
+    this.handleStickerClick = handleStickerClick;
 
     if(!this.tabsToRender.length) {
       this.tabsToRender = [
@@ -425,9 +414,9 @@ export class EmoticonsDropdown {
 
     const selectedDocument = await this.managers.appDocsManager.getDoc(docId);
 
-    console.log({document: docId, clearDraft, silent, target, ignoreNoPremium}, selectedDocument, 'event');
+    // console.log({document: docId, clearDraft, silent, target, ignoreNoPremium}, selectedDocument, target, 'event');
 
-    // return this.sendDocId({document: docId, clearDraft, silent, target, ignoreNoPremium});
+    this.handleStickerClick(target);
   };
 
   public addLazyLoadQueueRepeat(lazyLoadQueue: LazyLoadQueueIntersector, processInvisibleDiv: (div: HTMLElement) => void, middleware: Middleware) {
@@ -456,14 +445,9 @@ export class EmoticonsDropdown {
   }
 
   public destroy() {
-    // this.cleanup();
     this.listenerSetter.removeAll();
     this.tabsToRender.forEach((tab) => (tab as any).destroy?.());
     this.element.remove();
-  }
-
-  public hideAndDestroy() {
-
   }
 }
 
