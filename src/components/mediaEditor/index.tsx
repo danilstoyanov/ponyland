@@ -34,6 +34,7 @@ import ColorPicker from '../colorPicker';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, EraserTool} from './drawing';
 import StickersTab from './sticker-tab';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import EmoticonsDropdown from './emoticons-dropdown';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -465,12 +466,16 @@ export const MediaEditor = () => {
 
       appDownloadManager.construct(rootScope.managers);
 
-      const stickers = new StickersTab(rootScope.managers);
-      stickers.init();
+      // const stickers = new StickersTab(rootScope.managers);
+      // stickers.init();
 
-      stickerTabRef.appendChild(stickers.container);
+      const stickers = EmoticonsDropdown.getElement();
+      EmoticonsDropdown.init();
+      EmoticonsDropdown?.toggle(true);
 
-      console.log('stickers: ', stickers);
+      stickerTabRef.appendChild(stickers);
+
+      // console.log('stickers: ', stickers);
 
       // const node = createSearch();
       // console.log('node: ', node);

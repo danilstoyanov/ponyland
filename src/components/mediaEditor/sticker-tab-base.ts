@@ -480,7 +480,6 @@ export default class StickerTabBase<Category extends StickersTabCategory<any, an
 
   public createStickerRenderer() {
     this.managers;
-    debugger;
 
     const superStickerRenderer = new SuperStickerRenderer({
       regularLazyLoadQueue: this.emoticonsDropdown.lazyLoadQueue,

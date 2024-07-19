@@ -223,7 +223,7 @@ export default class DropdownHover extends EventListenerBase<{
 
       this.clearTimeout('toggle');
       this.setTimeout('done', () => {
-        this.element.style.display = 'none';
+        // this.element.style.display = 'none';
         this.forceClose = false;
         this.dispatchEvent('closed');
       }, delay);
