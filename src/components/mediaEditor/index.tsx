@@ -245,28 +245,28 @@ export const MediaEditor = () => {
         id: 0,
         type: 'pen',
         size: 16,
-        color: '#fff',
+        color: '#FE4438',
         instance: new PenTool()
       },
       {
         id: 1,
         type: 'arrow',
         size: 16,
-        color: '#fff',
+        color: '#FFD60A',
         instance: new ArrowTool()
       },
       {
         id: 2,
         type: 'brush',
         size: 16,
-        color: '#fff',
+        color: '#FF8901',
         instance: new BrushTool()
       },
       {
         id: 3,
         type: 'neon',
         size: 16,
-        color: '#fff',
+        color: '#62E5E0',
         instance: new NeonTool()
       },
       {
