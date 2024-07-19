@@ -13,14 +13,10 @@ import rootScope from '../../lib/rootScope';
 import {putPreloader} from '../putPreloader';
 import PopupStickers from '../popups/stickers';
 import findAndSplice from '../../helpers/array/findAndSplice';
-import {attachClickEvent} from '../../helpers/dom/clickEvent';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import mediaSizes from '../../helpers/mediaSizes';
-import noop from '../../helpers/noop';
-import ButtonIcon from '../buttonIcon';
-import confirmationPopup from '../confirmationPopup';
+
 import VisibilityIntersector, {OnVisibilityChangeItem} from '../visibilityIntersector';
-import findUpAsChild from '../../helpers/dom/findUpAsChild';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import PopupElement from '../popups';
 import apiManagerProxy from '../../lib/mtproto/mtprotoworker';
@@ -115,10 +111,6 @@ export default class StickersTab extends StickerTabBase<StickersTabCategory<Stic
   public init() {
     super.init();
 
-    this.scrollable.onAdditionalScroll = () => {
-      this.setTyping();
-    };
-
     const intersectionOptions = this.emoticonsDropdown.intersectionOptions;
     this.categoriesIntersector = new VisibilityIntersector(this.onCategoryVisibility, intersectionOptions);
 
@@ -180,21 +172,7 @@ export default class StickersTab extends StickerTabBase<StickersTabCategory<Stic
       icon: 'recent',
       styles: EmoticonsTabStyles.Stickers
     });
-    recentCategory.limit = 20;
-
-    const clearButton = ButtonIcon('close', {noRipple: true});
-    recentCategory.elements.title.append(clearButton);
-    attachClickEvent(clearButton, () => {
-      confirmationPopup({
-        titleLangKey: 'ClearRecentStickersAlertTitle',
-        descriptionLangKey: 'ClearRecentStickersAlertMessage',
-        button: {
-          langKey: 'Clear'
-        }
-      }).then(() => {
-        this.managers.appStickersManager.clearRecentStickers();
-      }, noop);
-    });
+    recentCategory.limit = 3;
 
     const promises = [
       Promise.all([
@@ -222,7 +200,6 @@ export default class StickersTab extends StickerTabBase<StickersTabCategory<Stic
 
     Promise.all(promises).finally(() => {
       this.mounted = true;
-      this.setTyping();
 
       const favedCategory = this.categories['faved'];
       const recentCategory = this.categories['recent'];
@@ -237,67 +214,7 @@ export default class StickersTab extends StickerTabBase<StickersTabCategory<Stic
 
     this.stickerRenderer = this.createStickerRenderer();
 
-    rootScope.addEventListener('sticker_updated', ({type, document, faved}) => {
-      // if(type === 'faved') {
-      //   return;
-      // }
-
-      const category = this.categories[type === 'faved' ? 'faved' : 'recent'];
-      if(category) {
-        if(faved) {
-          this.unshiftSticker(category, document);
-        } else {
-          this.deleteSticker(category, document);
-        }
-      }
-    });
-
-    rootScope.addEventListener('stickers_deleted', ({id}) => {
-      const category = this.categories[id];
-      this.deleteCategory(category);
-    });
-
-    rootScope.addEventListener('stickers_top', this.postponedEvent((id) => {
-      const category = this.categories[id];
-      if(category) {
-        this.positionCategory(category, true);
-        this.emoticonsDropdown.addEventListener('openAfterLayout', () => {
-          this.menuOnClickResult.setActiveStatic(category);
-        }, {once: true});
-      }
-    }));
-
-    rootScope.addEventListener('stickers_order', ({type, order}) => {
-      if(type !== 'stickers') {
-        return;
-      }
-
-      order.forEach((id) => {
-        const category = this.categories[id];
-        if(category) {
-          this.positionCategory(category, false);
-        }
-      });
-    });
-
-    rootScope.addEventListener('stickers_updated', ({type, stickers}) => {
-      const category = this.categories[type === 'faved' ? 'faved' : 'recent'];
-      if(category) {
-        onCategoryStickers(category, stickers);
-      }
-    });
-
-    rootScope.addEventListener('app_config', () => {
-      this.managers.apiManager.getLimit('favedStickers').then((limit) => {
-        this.setFavedLimit(limit);
-      });
-    });
-
     mediaSizes.addEventListener('resize', this.resizeCategories);
-
-    this.attachHelpers({
-      verifyRecent: (target) => !!findUpAsChild(target, this.categories['recent'].elements.items)
-    });
 
     this.init = null;
   }
@@ -360,20 +277,7 @@ export default class StickersTab extends StickerTabBase<StickersTabCategory<Stic
     this.managers.appStickersManager.saveRecentSticker(doc.id, true);
   }
 
-  public setTyping = (cancel = false) => {
-    if(!cancel && (!this.emoticonsDropdown.isActive() || this.emoticonsDropdown.tab !== this)) {
-      return;
-    }
-
-    rootScope.dispatchEvent('choosing_sticker', !cancel);
-  };
-
-  public onClosed() {
-    this.setTyping(true);
-  }
-
   public onOpened() {
-    this.setTyping();
     this.resizeCategories();
   }
 

@@ -462,8 +462,6 @@ export const MediaEditor = () => {
 
       console.log(rootScope.managers, 'rootScope.managers', rootScope.managers.apiFileManager);
 
-      // rootScope.managers.
-
       appDownloadManager.construct(rootScope.managers);
 
       // const stickers = new StickersTab(rootScope.managers);
@@ -471,7 +469,9 @@ export const MediaEditor = () => {
 
       const stickers = EmoticonsDropdown.getElement();
       EmoticonsDropdown.init();
-      EmoticonsDropdown?.toggle(true);
+
+      // EmoticonsDropdown?.toggle(true);
+      console.log('stickers: ', stickers);
 
       stickerTabRef.appendChild(stickers);
 
@@ -894,7 +894,7 @@ export const MediaEditor = () => {
               )}
 
               {activeTab() === 'smile' && (
-                <div class={styles.MediaEditorSidebarTabsContentTabPanel} ref={stickerTabRef}>
+                <div class={classNames(styles.MediaEditorSidebarTabsContentTabPanel, styles.Stickers)} ref={stickerTabRef}>
                   <h1>STICKERS</h1>
                 </div>
               )}

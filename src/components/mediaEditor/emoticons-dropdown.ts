@@ -6,7 +6,6 @@
 
 import type LazyLoadQueueIntersector from '../lazyLoadQueueIntersector';
 import IS_TOUCH_SUPPORTED from '../../environment/touchSupport';
-import appImManager from '../../lib/appManagers/appImManager';
 import rootScope from '../../lib/rootScope';
 import animationIntersector, {AnimationItemGroup} from '../animationIntersector';
 import {horizontalMenu} from '../horizontalMenu';
@@ -23,24 +22,15 @@ import AppGifsTab from '../sidebarRight/tabs/gifs';
 import AppStickersTab from '../sidebarRight/tabs/stickers';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import findUpTag from '../../helpers/dom/findUpTag';
-import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import whichChild from '../../helpers/dom/whichChild';
 import cancelEvent from '../../helpers/dom/cancelEvent';
-import DropdownHover from '../../helpers/dropdownHover';
-import pause from '../../helpers/schedulers/pause';
-import {IS_APPLE_MOBILE} from '../../environment/userAgent';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {attachClickEvent, simulateClickEvent} from '../../helpers/dom/clickEvent';
 import overlayCounter from '../../helpers/overlayCounter';
 import noop from '../../helpers/noop';
 import {FocusDirection, ScrollOptions} from '../../helpers/fastSmoothScroll';
 import BezierEasing from '../../vendor/bezierEasing';
-import RichInputHandler from '../../helpers/dom/richInputHandler';
-import {getCaretPosF} from '../../helpers/dom/getCaretPosNew';
 import ListenerSetter from '../../helpers/listenerSetter';
-import {ChatRights} from '../../lib/appManagers/appChatsManager';
-import {toastNew} from '../toast';
-import safeAssign from '../../helpers/object/safeAssign';
 import ButtonIcon from '../buttonIcon';
 import StickersTabCategory from '../emoticonsDropdown/category';
 import {Middleware} from '../../helpers/middleware';
@@ -87,18 +77,21 @@ const renderEmojiDropdownElement = (): HTMLDivElement => {
     ['gifs', 'gifs', 2],
     ['delete justify-self-end', 'deleteleft', -1]
   ];
+
   const d = div.firstElementChild as HTMLDivElement;
+
   d.lastElementChild.append(...a.map(([className, icon, tabId]) => {
     const button = ButtonIcon(`${icon} menu-horizontal-div-item emoji-tabs-${className}`, {noRipple: true});
     button.dataset.tab = '' + tabId;
     return button;
   }));
+
   return d;
 }
 
 export const EMOJI_TEXT_COLOR = 'primary-text-color';
 
-export class EmoticonsDropdown extends DropdownHover {
+export class EmoticonsDropdown {
   public lazyLoadQueue = new LazyLoadQueue(1);
 
   private container: HTMLElement;
@@ -121,91 +114,17 @@ export class EmoticonsDropdown extends DropdownHover {
 
   public isStandalone: boolean;
 
-  constructor(options: {
-    customParentElement?: HTMLElement,
-    getOpenPosition?: () => DOMRectEditable,
-    tabsToRender?: EmoticonsTab[],
-    customOnSelect?: (emoji: {element: HTMLElement} & ReturnType<any>) => void,
-  } = {}) {
-    super({
-      element: renderEmojiDropdownElement(),
-      ignoreOutClickClassName: 'input-message-input'
-    });
+  public element: HTMLElement;
 
-    safeAssign(this, options);
-
+  constructor() {
     this.listenerSetter = new ListenerSetter();
-    this.isStandalone = !!options?.tabsToRender;
+    this.element = renderEmojiDropdownElement();
+
     this.element.classList.toggle('is-standalone', this.isStandalone);
-
-    // this.addEventListener('open', async() => {
-    //   if(IS_TOUCH_SUPPORTED) {
-    //     if(blurActiveElement()) {
-    //       await pause(100);
-    //     }
-    //   }
-
-    //   if(options.getOpenPosition) {
-    //     const rect = options.getOpenPosition();
-    //     this.element.style.setProperty('--top', rect.top + 'px');
-    //     this.element.style.setProperty('--left', rect.left + 'px');
-    //   }
-
-    //   if(options.customParentElement) {
-    //     options.customParentElement.append(this.element);
-    //   }
-
-    //   this.lazyLoadQueue.lock();
-    //   // this.lazyLoadQueue.unlock();
-    //   animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
-
-    //   const tab = this.tab;
-    //   tab.onOpen?.();
-    // });
-
-    // this.addEventListener('opened', () => {
-    //   animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-    //   this.lazyLoadQueue.unlockAndRefresh();
-
-    //   // this.container.classList.remove('disable-hover');
-
-    //   const tab = this.tab;
-    //   tab.onOpened?.();
-    // });
-
-    // this.addEventListener('openAfterLayout', () => {
-    //   if(options.getOpenPosition) {
-    //     this.element.style.setProperty('--width', this.element.offsetWidth + 'px');
-    //   }
-    // });
-
-    // this.addEventListener('close', () => {
-    //   this.lazyLoadQueue.lock();
-
-    //   // нужно залочить группу и выключить стикеры
-    //   animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
-    //   animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
-
-    //   const tab = this.tab;
-    //   // tab.onClose?.();
-    // });
-
-    // this.addEventListener('closed', () => {
-    //   // теперь можно убрать visible, чтобы они не включились после фокуса
-    //   animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-    //   this.lazyLoadQueue.unlock();
-    //   this.lazyLoadQueue.refresh();
-
-    //   // this.container.classList.remove('disable-hover');
-
-    //   const tab = this.tab;
-    //   // tab.onClosed?.();
-    // });
   }
 
   public canUseEmoji(emoji: AppEmoji, showToast?: boolean) {
     this.init?.();
-    // return this.getTab(EmojiTab).canUseEmoji(emoji, undefined, showToast);
   }
 
   public get tab() {
@@ -245,7 +164,7 @@ export class EmoticonsDropdown extends DropdownHover {
     this.container.prepend(...this.tabsToRender.map((tab) => (tab as any).container));
     this.tabsEl = this.element.querySelector('.emoji-tabs') as HTMLUListElement;
 
-    this.selectTab = horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
+    horizontalMenu(this.tabsEl, this.container, this.onSelectTabClick, () => {
       const {tab} = this;
       tab.init?.();
       animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
@@ -289,15 +208,13 @@ export class EmoticonsDropdown extends DropdownHover {
         } else if(mouseMoveEventAttached) {
           this.listenerSetter.removeManual(document.body, 'mousemove', onMouseMove);
           if(lastMouseMoveEvent) {
-            this.onMouseOut(lastMouseMoveEvent);
+            // this.onMouseOut(lastMouseMoveEvent);
           }
         }
       });
     }
 
-    const ret = super.init();
-    this.init = undefined;
-    return ret;
+    return this.element;
   }
 
   public getElement() {
@@ -324,8 +241,6 @@ export class EmoticonsDropdown extends DropdownHover {
     animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
 
     this.tabId = id;
-    // this.searchButton.classList.toggle('hide', this.tabId === this.getTab(EmojiTab)?.tabId);
-    // this.deleteBtn.classList.toggle('hide', this.tabId !== this.getTab(EmojiTab)?.tabId);
   };
 
   public static menuOnClick = (
@@ -508,28 +423,32 @@ export class EmoticonsDropdown extends DropdownHover {
     const docId = target.dataset.docId;
     if(!docId) return false;
 
+    const selectedDocument = await this.managers.appDocsManager.getDoc(docId);
+
+    console.log({document: docId, clearDraft, silent, target, ignoreNoPremium}, selectedDocument, 'event');
+
     // return this.sendDocId({document: docId, clearDraft, silent, target, ignoreNoPremium});
   };
 
   public addLazyLoadQueueRepeat(lazyLoadQueue: LazyLoadQueueIntersector, processInvisibleDiv: (div: HTMLElement) => void, middleware: Middleware) {
     const listenerSetter = new ListenerSetter();
-    listenerSetter.add(this)('close', () => {
-      lazyLoadQueue.lock();
-    });
+    // listenerSetter.add(this)('close', () => {
+    //   lazyLoadQueue.lock();
+    // });
 
-    listenerSetter.add(this)('closed', () => {
-      const divs = lazyLoadQueue.intersector.getVisible();
+    // listenerSetter.add(this)('closed', () => {
+    //   const divs = lazyLoadQueue.intersector.getVisible();
 
-      for(const div of divs) {
-        processInvisibleDiv(div);
-      }
+    //   for(const div of divs) {
+    //     processInvisibleDiv(div);
+    //   }
 
-      lazyLoadQueue.intersector.clearVisible();
-    });
+    //   lazyLoadQueue.intersector.clearVisible();
+    // });
 
-    listenerSetter.add(this)('opened', () => {
-      lazyLoadQueue.unlockAndRefresh();
-    });
+    // listenerSetter.add(this)('opened', () => {
+    //   lazyLoadQueue.unlockAndRefresh();
+    // });
 
     middleware.onClean(() => {
       listenerSetter.removeAll();
@@ -537,16 +456,14 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   public destroy() {
-    this.cleanup();
+    // this.cleanup();
     this.listenerSetter.removeAll();
     this.tabsToRender.forEach((tab) => (tab as any).destroy?.());
     this.element.remove();
   }
 
   public hideAndDestroy() {
-    return this.toggle(false).then(() => {
-      return this.destroy();
-    });
+
   }
 }
 

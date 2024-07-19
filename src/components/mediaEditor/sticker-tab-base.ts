@@ -396,13 +396,13 @@ export default class StickerTabBase<Category extends StickersTabCategory<any, an
   }
 
   public init() {
-    this.emoticonsDropdown && this.listenerSetter.add(this.emoticonsDropdown)('closed', () => {
-      this.postponedEvents.forEach(({cb, args}) => {
-        cb(...args);
-      });
+    // this.emoticonsDropdown && this.listenerSetter.add(this.emoticonsDropdown)('closed', () => {
+    //   this.postponedEvents.forEach(({cb, args}) => {
+    //     cb(...args);
+    //   });
 
-      this.postponedEvents.length = 0;
-    });
+    //   this.postponedEvents.length = 0;
+    // });
   }
 
   public destroy() {
