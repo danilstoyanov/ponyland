@@ -32,7 +32,7 @@ import {
 } from './filters';
 import {StickerEntityType, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
-import {PrimitivePen, PrimitiveArrow, PrimitiveBrush, PrimitiveNeon, PrimitiveEraser} from './tools';
+import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, EraserTool} from './drawing';
 
 
 /* Navbar & Tabs */
@@ -79,6 +79,7 @@ interface MediaEditorTool {
   size: number;
   type: ToolType;
   color?: string;
+  instance?: any;
 }
 
 const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
@@ -233,48 +234,54 @@ export const MediaEditor = () => {
   let previewRef: HTMLDivElement;
   let filterLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
+  let DrawingManagerInstance: DrawingManager;
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
 
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
-    selectedToolId: -1,
+    selectedToolId: 0,
     tools: [
       {
         id: 0,
         type: 'pen',
         size: 16,
-        color: '#fff'
+        color: '#fff',
+        instance: new PenTool()
       },
       {
         id: 1,
         type: 'arrow',
         size: 16,
-        color: '#fff'
+        color: '#fff',
+        instance: new ArrowTool()
       },
       {
         id: 2,
         type: 'brush',
         size: 16,
-        color: '#fff'
+        color: '#fff',
+        instance: new BrushTool()
       },
       {
         id: 3,
         type: 'neon',
         size: 16,
-        color: '#fff'
+        color: '#fff',
+        instance: new NeonTool()
       },
       {
         id: 4,
         type: 'blur',
         size: 16,
         color: '#fff'
+        // instance: new PrimitivePen(),
       },
       {
         id: 5,
         type: 'eraser',
         size: 16,
-        color: '#fff'
+        color: '#fff',
+        instance: new EraserTool()
       }
     ],
     entities: [
@@ -295,6 +302,8 @@ export const MediaEditor = () => {
       }
     ]
   }
+
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
 
@@ -327,41 +336,6 @@ export const MediaEditor = () => {
       height: newHeight
     };
   }
-
-  onMount(() => {
-    const image = new Image();
-
-    image.addEventListener('load', async() => {
-      const dimensions = getScaledImageSize(previewRef, image);
-
-      previewRef.style.width = `${dimensions.width}px`;
-      previewRef.style.height = `${dimensions.height}px`;
-
-      filterLayerCanvas.width = dimensions.width;
-      filterLayerCanvas.height = dimensions.height;
-
-      drawingLayerCanvas.width = dimensions.width;
-      drawingLayerCanvas.height = dimensions.height;
-
-      const ctx = filterLayerCanvas.getContext('2d');
-      ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
-
-      const drawingCtx = drawingLayerCanvas.getContext('2d');
-      drawingCtx.fillStyle = 'blue';
-      drawingCtx.fillRect(0, 0, 400, 800);
-
-      // const pen = new PrimitivePen(drawingLayerCanvas, previewRef);
-      // const pen = new PrimitiveArrow(drawingLayerCanvas, previewRef);
-
-      const brush = new PrimitiveEraser(drawingLayerCanvas, previewRef);
-
-      drawingLayerCanvas.addEventListener('mousedown', brush.start.bind(brush));
-      drawingLayerCanvas.addEventListener('mousemove', brush.move.bind(brush));
-      drawingLayerCanvas.addEventListener('mouseup', brush.end.bind(brush));
-    });
-
-    image.src = png;
-  });
 
   // * Canvas Renderer
   const renderMedia = () => {
@@ -400,10 +374,18 @@ export const MediaEditor = () => {
   // * Tools Handlers
   const selectTool = (id: number) => {
     setState({selectedToolId: id});
+    DrawingManagerInstance.deactivate();
+    DrawingManagerInstance.activate(state.tools[id].instance, state.tools[id].color, state.tools[id].size);
   };
 
   const setToolColor = (color: MediaEditorTool['color']) => {
     setState('tools', state.selectedToolId, {color});
+    DrawingManagerInstance.update({color});
+  };
+
+  const setToolSize = (size: MediaEditorTool['size']) => {
+    setState('tools', state.selectedToolId, {size});
+    DrawingManagerInstance.update({size});
   };
 
   // * Entity Handlers
@@ -450,6 +432,36 @@ export const MediaEditor = () => {
   const setTextEntityTextAlign = (textAlign: TextEntityType['textAlign']) => {
     setState('entities', state.selectedEntityId, {textAlign})
   };
+
+  // * On Mount
+  onMount(() => {
+    const image = new Image();
+
+    image.addEventListener('load', async() => {
+      const dimensions = getScaledImageSize(previewRef, image);
+
+      previewRef.style.width = `${dimensions.width}px`;
+      previewRef.style.height = `${dimensions.height}px`;
+
+      filterLayerCanvas.width = dimensions.width;
+      filterLayerCanvas.height = dimensions.height;
+
+      drawingLayerCanvas.width = dimensions.width;
+      drawingLayerCanvas.height = dimensions.height;
+
+      const ctx = filterLayerCanvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+
+      const drawingCtx = drawingLayerCanvas.getContext('2d');
+      drawingCtx.fillStyle = 'blue';
+      drawingCtx.fillRect(0, 0, 400, 800);
+
+      DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewRef);
+      DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size)
+    });
+
+    image.src = png;
+  });
 
   return (
     <div class={styles.MediaEditor}>
@@ -797,7 +809,14 @@ export const MediaEditor = () => {
                     <MediaEditorColorPicker onChange={(color) => setToolColor(color.rgba)} />
                   </div>
 
-                  <MediaEditorRangeSelector label="Size" min={10} max={48} step={1} value={14} />
+                  <MediaEditorRangeSelector
+                    label="Size"
+                    min={10}
+                    max={48}
+                    step={1}
+                    value={14}
+                    onScrub={(value) => setToolSize(value)}
+                  />
 
                   <div class={styles.MediaEditorSidebarSectionHeader}>
                     Tool

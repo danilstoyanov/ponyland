@@ -107,10 +107,6 @@ export default function RowTsx(props: Partial<{
     props.media
   );
 
-  createEffect(() => {
-    console.log('props.rowClasses: ', props.rowClasses);
-  })
-
   const ret = (
     <Dynamic
       ref={props.ref as any}
