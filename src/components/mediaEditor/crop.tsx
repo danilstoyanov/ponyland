@@ -1,7 +1,6 @@
-import {createEffect, onCleanup, onMount, Show, splitProps} from 'solid-js';
+import {createEffect, createSignal, onCleanup, onMount} from 'solid-js';
 import {ButtonIconTsx} from '../buttonIconTsx'
 import styles from './mediaEditor.module.scss'
-import resizeableImage from './resizeableImage';
 
 export type CropAspectRatio = 'Free'
   | 'Original'
@@ -33,16 +32,11 @@ interface CropPops {
 export const Crop = (props: CropPops) => {
   let containerRef: HTMLDivElement;
   let cropImageRef: HTMLImageElement;
+  let overlayImageRef: HTMLImageElement;
 
-  let cropImage: HTMLImageElement,
-    cropLeft = 0,
-    cropTop = 0,
-    cropWidth = 0,
-    cropHeight = 0,
-    scaledRatio = 0;
-
-  const CROPWIDTH = 200;
-  const CROPHEIGHT = 200;
+  let scaledRatio = 0;
+  let CROPWIDTH = 200;
+  let CROPHEIGHT = 200;
 
   const event_state: Partial<{
     mouse_x: number,
@@ -74,17 +68,11 @@ export const Crop = (props: CropPops) => {
   }
 
   function updateCropSize(width: number, height: number) {
-    cropWidth = width * scaledRatio;
-    cropHeight = height * scaledRatio;
-
     containerRef.style.width = width + 'px';
     containerRef.style.height = height + 'px';
   }
 
   function updateCropImage(left: number, top: number) {
-    cropTop = top * scaledRatio;
-    cropLeft = left * scaledRatio;
-
     cropImageRef.style.top = -top + 'px';
     cropImageRef.style.left = -left + 'px';
   }
@@ -162,45 +150,140 @@ export const Crop = (props: CropPops) => {
     updateContainer(left, top);
   }
 
-  onMount(() => {
+  function init() {
+    // ЭТО ДЛЯ РЕСАЙЗИНГА МОЖЕТ ПОНАДОБИТЬСЯ
     // scaledRatio = props.image.naturalWidth / props.image.offsetWidth;
     scaledRatio = 1;
 
-    // const left = props.image.offsetWidth / 2 - CROPWIDTH / 2;
-    // const top = props.image.offsetHeight / 2 - CROPHEIGHT / 2;
+    const left = 0;
+    const top = 0;
 
+    cropImageRef.style.maxWidth = overlayImageRef.width - 2 + 'px';
 
-    const left = props.image.offsetWidth / 2 - CROPWIDTH / 2;
-    const top = props.image.offsetHeight / 2 - CROPHEIGHT / 2;
+    CROPWIDTH = overlayImageRef.width - 200;
+    CROPHEIGHT = overlayImageRef.height - 200;
 
     updateCropSize(CROPWIDTH, CROPHEIGHT);
+
     updateCropImage(left, top);
     updateContainer(left, top);
     addHandlers();
+  }
+
+  onMount(() => {
+    overlayImageRef.onload = init;
   });
 
   onCleanup(() => {
     removeHandlers();
   });
 
-  console.log('props.image.width: ', props.image.width);
-  console.log('props.image.height: ', props.image.height);
+  const adjustCropSizeToAspectRatio = (aspectRatio: CropAspectRatio) => {
+    let width = CROPWIDTH;
+    let height = CROPHEIGHT;
+    let aspectWidth: number | undefined;
+    let aspectHeight: number | undefined;
+
+    switch(aspectRatio) {
+      case 'Free':
+        // Free aspect ratio, do not enforce any specific aspect ratio
+        return;
+
+      case 'Original':
+        // Maintain the original aspect ratio of the image
+        const originalWidth = props.image.naturalWidth;
+        const originalHeight = props.image.naturalHeight;
+        width = CROPWIDTH;
+        height = (CROPWIDTH / originalWidth) * originalHeight;
+        break;
+
+      case 'Square':
+        // Enforce a square aspect ratio
+        width = CROPWIDTH;
+        height = CROPWIDTH;
+        break;
+
+      default:
+        // Handle custom aspect ratios
+        [aspectWidth, aspectHeight] = aspectRatio.split(':').map(Number);
+        if(aspectWidth && aspectHeight) {
+          width = CROPWIDTH;
+          height = (CROPWIDTH / aspectWidth) * aspectHeight;
+        }
+        break;
+    }
+
+    // Ensure the crop area fits within the image bounds
+    const maxWidth = overlayImageRef.offsetWidth;
+    const maxHeight = overlayImageRef.offsetHeight;
+
+    if(width > maxWidth) {
+      width = maxWidth;
+      if(aspectWidth && aspectHeight) {
+        height = (maxWidth / aspectWidth) * aspectHeight;
+      }
+    }
+
+    if(height > maxHeight) {
+      height = maxHeight;
+      if(aspectWidth && aspectHeight) {
+        width = (maxHeight / aspectHeight) * aspectWidth;
+      }
+    }
+
+    updateCropSize(width, height);
+    updateCropImage(0, 0); // Reset the crop image position to the top-left corner
+    updateContainer(0, 0); // Reset the container position to the top-left corner
+  };
+
+  // Usage of the method
+  createEffect(() => {
+    adjustCropSizeToAspectRatio(props.aspectRatio);
+  });
+
+
+  // Usage of the method
+  createEffect(() => {
+    adjustCropSizeToAspectRatio(props.aspectRatio);
+  });
+
+
+  createEffect(() => {
+    console.log('props.aspectRatio: ', props.aspectRatio);
+  });
 
   return (
     <div class={styles.MediaEditorCrop}>
       <div class={styles.MediaEditorCropWorkArea}>
         <div class="crop-component">
           <div class="crop-overlay" ref={containerRef}>
+            <div class="crop-grid">
+              <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopLeft}`}>
+                <div class={styles.TransformableEntityCorner}></div>
+              </div>
+              <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopRight}`}>
+                <div class={styles.TransformableEntityCorner}></div>
+              </div>
+              <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomLeft}`}>
+                <div class={styles.TransformableEntityCorner}></div>
+              </div>
+              <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomRight}`}>
+                <div class={styles.TransformableEntityCorner}></div>
+              </div>
+
+              <div class="crop-dashed crop-dashed-v"></div>
+              <div class="crop-dashed crop-dashed-h"></div>
+            </div>
+
             <img
               ref={cropImageRef}
               draggable={false}
               src={props.image.src}
               class="crop-overlay-image"
-              style={{'max-width': props.image.width + 'px'}}
             />
           </div>
 
-          <img draggable={false} src={props.image.src}/>
+          <img ref={overlayImageRef} draggable={false} src={props.image.src}/>
 
           <div class="crop-overlay-color"></div>
         </div>
