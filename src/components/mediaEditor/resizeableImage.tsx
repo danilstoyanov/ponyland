@@ -49,32 +49,32 @@ function resizeableImage(originalImage: HTMLImageElement, originalImageParent: H
   }
 
   function init() {
-    originalImage.classList.add('crop-blur');
-    originalImage.draggable = false;
+    originalImage.classList.add('crop-blur'); //
+    originalImage.draggable = false; //
 
-    cropImage = new Image();
-    cropImage.src = originalImage.src;
-    cropImage.draggable = false;
-    cropImage.classList.add('crop-overlay-image');
+    cropImage = new Image(); //
+    cropImage.src = originalImage.src; //
+    cropImage.draggable = false; //
+    cropImage.classList.add('crop-overlay-image'); //
 
-    cropComponent = document.createElement('div');
-    cropComponent.classList.add('crop-component');
+    cropComponent = document.createElement('div'); //
+    cropComponent.classList.add('crop-component'); //
 
-    container = document.createElement('div');
-    container.classList.add('crop-overlay');
+    container = document.createElement('div'); //
+    container.classList.add('crop-overlay'); //
 
-    const overlayColor = document.createElement('div');
-    overlayColor.classList.add('crop-overlay-color');
+    const overlayColor = document.createElement('div'); //
+    overlayColor.classList.add('crop-overlay-color'); //
 
-    cropComponent.appendChild(container);
+    cropComponent.appendChild(container); //
 
-    const wrapper = originalImageParent;
+    const wrapper = originalImageParent; //
 
-    wrapper.appendChild(cropComponent);
-    cropComponent.appendChild(cropImage);
-    cropComponent.appendChild(originalImage);
-    cropComponent.appendChild(overlayColor);
-    container.appendChild(cropImage);
+    wrapper.appendChild(cropComponent); //
+    cropComponent.appendChild(cropImage); //
+    cropComponent.appendChild(originalImage); //
+    cropComponent.appendChild(overlayColor); //
+    container.appendChild(cropImage); //
 
     cropImage.style.maxWidth = originalImage.width + 'px';
 

@@ -516,6 +516,8 @@
 
     :global(.crop-overlay) {
       border-radius: 0;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 255, 255, 0.5);
     }
 
     &WorkArea {
@@ -547,3 +549,103 @@
 
   &CropWorkArea {}
 };
+
+:global(.crop-grid) {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  // background: red;
+}
+
+:global(.crop-dashed) {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+:global(.crop-dashed.crop-dashed-v) {
+  border-left-width: 1px;
+  border-right-width: 1px;
+  border-bottom-width: 0;
+  border-top-width: 0;
+  height: 100%;
+  top: 0;
+  left: calc(100% / 3);
+  width: calc(100% / 3);
+}
+
+:global(.crop-dashed.crop-dashed-h) {
+  border-bottom-width: 1px;
+  border-top-width: 1px;
+  border-left-width: 0;
+  border-right-width: 0;
+  height: calc(100% / 3);
+  left: 0;
+  top: calc(100% / 3);
+  width: 100%;
+}
+
+// cropper-dashed dashed-v
+// cropper-dashed dashed-h
+
+.MediaEditorRow.Active {
+  background-color: var(--light-secondary-text-color);
+}
+
+.CropCorner {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #fff;
+}
+
+.CropCornerHandle {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+}
+
+.CropCornerHandle.TopLeft {
+  top: -20px;
+  left: -20px;
+}
+
+.CropCornerHandle.TopLeft .CropCorner {
+  bottom: 0;
+  right: 0;
+}
+
+.CropCornerHandle.TopLeft {
+  top: -20px;
+  right: -20px;
+}
+
+.CropCornerHandle.TopRight {
+  top: -20px;
+  right: -20px;
+}
+
+.CropCornerHandle.TopRight .CropCorner {
+  left: 0;
+  bottom: 0;
+}
+
+.CropCornerHandle.BottomLeft {
+  bottom: -20px;
+  left: -20px;
+}
+
+.CropCornerHandle.BottomLeft .CropCorner {
+  right: 0;
+}
+
+.CropCornerHandle.BottomRight {
+  bottom: -20px;
+  right: -20px;
+}
+
+.CropCornerHandle.BottomRight .CropCorner {
+  left: 0;
+  top: 0;
+}

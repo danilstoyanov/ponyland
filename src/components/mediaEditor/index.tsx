@@ -38,6 +38,7 @@ import resizeableImage from '../../lib/cropper';
 import ResizeableImage from './resizeableImage';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
+import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -440,8 +441,8 @@ export const MediaEditor = () => {
       // Convert canvas to blob and resolve with the blob URL
       resultCanvas.toBlob((blob) => {
         if(blob) {
-          const blobUrl = URL.createObjectURL(blob);
-          resolve(blobUrl);
+          const data = readBlobAsDataURL(blob);
+          resolve(data);
         } else {
           reject(new Error('Failed to create blob'));
         }
@@ -849,58 +850,112 @@ export const MediaEditor = () => {
                     Aspect ratio
                   </div>
 
+                  {/* class={classNames(styles.MediaEditorSidebarTabsListTab, activeTab() === 'brush' && styles.active)} */}
+
                   <div class={styles.MediaEditorSidebarTabsContentTabPanelCrop}>
-                    <RowTsx title='Free' icon='aspect_ratio_free' clickable={() => setCropAspectRatio('Free')} />
-                    <RowTsx title='Original' icon='aspect_ratio_image_original' clickable={() => setCropAspectRatio('Original')} />
-                    <RowTsx title='Square' icon='aspect_ratio_square' clickable={() => setCropAspectRatio('Square')} />
+                    <RowTsx
+                      title='Free'
+                      icon='aspect_ratio_free'
+                      clickable={() => setCropAspectRatio('Free')}
+                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === 'Free' && styles.Active]}
+                    />
+
+                    <RowTsx
+                      title='Original'
+                      icon='aspect_ratio_image_original'
+                      clickable={() => setCropAspectRatio('Original')}
+                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === 'Original' && styles.Active]}
+                    />
+
+                    <RowTsx
+                      title='Square'
+                      icon='aspect_ratio_square'
+                      clickable={() => setCropAspectRatio('Square')}
+                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === 'Square' && styles.Active]}
+                    />
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='3:2' icon='aspect_ratio_3_2' clickable={() => setCropAspectRatio('3:2')} />
+                      <RowTsx
+                        title='3:2'
+                        icon='aspect_ratio_3_2'
+                        clickable={() => setCropAspectRatio('3:2')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '3:2' && styles.Active]}
+                      />
+
                       <RowTsx
                         title='2:3'
                         icon='aspect_ratio_3_2'
                         iconClasses={['row-icon-rotated']}
                         clickable={() => setCropAspectRatio('2:3')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '2:3' && styles.Active]}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='4:3' icon='aspect_ratio_4_3' clickable={() => setCropAspectRatio('4:3')} />
+                      <RowTsx
+                        title='4:3'
+                        icon='aspect_ratio_4_3'
+                        clickable={() => setCropAspectRatio('4:3')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '4:3' && styles.Active]}
+                      />
+
                       <RowTsx
                         title='3:4'
                         icon='aspect_ratio_4_3'
                         iconClasses={['row-icon-rotated']}
                         clickable={() => setCropAspectRatio('3:4')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '3:4' && styles.Active]}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='5:4' icon='aspect_ratio_5_4' clickable={() => setCropAspectRatio('5:4')} />
+                      <RowTsx
+                        title='5:4'
+                        icon='aspect_ratio_5_4'
+                        clickable={() => setCropAspectRatio('5:4')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '5:4' && styles.Active]}
+                      />
+
                       <RowTsx
                         title='4:5'
                         icon='aspect_ratio_5_4'
                         iconClasses={['row-icon-rotated']}
                         clickable={() => setCropAspectRatio('4:5')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '4:5' && styles.Active]}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='7:5' icon='aspect_ratio_7_5' clickable={() => setCropAspectRatio('7:5')} />
+                      <RowTsx
+                        title='7:5'
+                        icon='aspect_ratio_7_5'
+                        clickable={() => setCropAspectRatio('7:5')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '7:5' && styles.Active]}
+                      />
+
                       <RowTsx
                         title='5:7'
                         icon='aspect_ratio_7_5'
                         iconClasses={['row-icon-rotated']}
                         clickable={() => setCropAspectRatio('5:7')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '5:7' && styles.Active]}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='16:9' icon='aspect_ratio_16_9' clickable={() => setCropAspectRatio('16:9')} />
+                      <RowTsx
+                        title='16:9'
+                        icon='aspect_ratio_16_9'
+                        clickable={() => setCropAspectRatio('16:9')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '16:9' && styles.Active]}
+                      />
+
                       <RowTsx
                         title='9:16'
                         icon='aspect_ratio_16_9'
                         iconClasses={['row-icon-rotated']}
                         clickable={() => setCropAspectRatio('9:16')}
+                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '9:16' && styles.Active]}
                       />
                     </div>
                   </div>
