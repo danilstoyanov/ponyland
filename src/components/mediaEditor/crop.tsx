@@ -282,59 +282,58 @@ export const Crop = (props: CropPops) => {
         const action = currentResizer.dataset.resizeAction;
 
         function resize(e: MouseEvent) {
+          let width = initialWidth;
+          let height = initialHeight;
+          let left = initialLeft;
+          let top = initialTop;
+
           if(action === 'top-right') {
-            const width = initialWidth + (e.clientX - startX);
-            const height = initialHeight - (e.clientY - startY);
-            if(width > minimum_size) {
-              cropperBox.style.width = width + 'px';
-              cropperOutBox.style.width = width + 'px';
-            }
-            if(height > minimum_size) {
-              cropperBox.style.height = height + 'px';
-              cropperOutBox.style.height = height + 'px';
-              cropperBox.style.top = initialTop + (e.clientY - startY) + 'px';
-              cropperOutBox.style.top = initialTop + (e.clientY - startY) + 'px';
-            }
+            width = initialWidth + (e.clientX - startX);
+            height = initialHeight - (e.clientY - startY);
+            top = initialTop + (e.clientY - startY);
           } else if(action === 'top-left') {
-            const width = initialWidth - (e.clientX - startX);
-            const height = initialHeight - (e.clientY - startY);
-            if(width > minimum_size) {
-              cropperBox.style.width = width + 'px';
-              cropperOutBox.style.width = width + 'px';
-              cropperBox.style.left = initialLeft + (e.clientX - startX) + 'px';
-              cropperOutBox.style.left = initialLeft + (e.clientX - startX) + 'px';
-            }
-            if(height > minimum_size) {
-              cropperBox.style.height = height + 'px';
-              cropperOutBox.style.height = height + 'px';
-              cropperBox.style.top = initialTop + (e.clientY - startY) + 'px';
-              cropperOutBox.style.top = initialTop + (e.clientY - startY) + 'px';
-            }
+            width = initialWidth - (e.clientX - startX);
+            height = initialHeight - (e.clientY - startY);
+            left = initialLeft + (e.clientX - startX);
+            top = initialTop + (e.clientY - startY);
           } else if(action === 'bottom-right') {
-            const width = initialWidth + (e.clientX - startX);
-            const height = initialHeight + (e.clientY - startY);
-            if(width > minimum_size) {
-              cropperBox.style.width = width + 'px';
-              cropperOutBox.style.width = width + 'px';
-            }
-            if(height > minimum_size) {
-              cropperBox.style.height = height + 'px';
-              cropperOutBox.style.height = height + 'px';
-            }
+            width = initialWidth + (e.clientX - startX);
+            height = initialHeight + (e.clientY - startY);
           } else if(action === 'bottom-left') {
-            const width = initialWidth - (e.clientX - startX);
-            const height = initialHeight + (e.clientY - startY);
-            if(width > minimum_size) {
-              cropperBox.style.width = width + 'px';
-              cropperOutBox.style.width = width + 'px';
-              cropperBox.style.left = initialLeft + (e.clientX - startX) + 'px';
-              cropperOutBox.style.left = initialLeft + (e.clientX - startX) + 'px';
-            }
-            if(height > minimum_size) {
-              cropperBox.style.height = height + 'px';
-              cropperOutBox.style.height = height + 'px';
-            }
+            width = initialWidth - (e.clientX - startX);
+            height = initialHeight + (e.clientY - startY);
+            left = initialLeft + (e.clientX - startX);
           }
+
+          if(width > minimum_size) {
+            cropperBox.style.width = width + 'px';
+            cropperOutBox.style.width = width + 'px';
+          }
+
+          if(height > minimum_size) {
+            cropperBox.style.height = height + 'px';
+            cropperOutBox.style.height = height + 'px';
+          }
+
+          cropperBox.style.left = left + 'px';
+          cropperOutBox.style.left = left + 'px';
+          cropperBox.style.top = top + 'px';
+          cropperOutBox.style.top = top + 'px';
+
+          const maxWidth = overlayImageRef.offsetWidth;
+          const maxHeight = overlayImageRef.offsetHeight;
+
+          if(width > maxWidth) {
+            cropperBox.style.width = maxWidth + 'px';
+            cropperOutBox.style.width = maxWidth + 'px';
+          }
+
+          if(height > maxHeight) {
+            cropperBox.style.height = maxHeight + 'px';
+            cropperOutBox.style.height = maxHeight + 'px';
+          }
+
+          updateCropImage(left, top);
         }
 
         function stopResize() {

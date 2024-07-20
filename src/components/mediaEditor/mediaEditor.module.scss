@@ -550,17 +550,45 @@
   &CropWorkArea {}
 };
 
+.MediaEditorCrop {
+  div[data-resize-action=top-left]:hover {
+    cursor: nwse-resize;
+    background-color: green;
+  }
+  div[data-resize-action=top-right]:hover {
+    cursor: nesw-resize;
+    background-color: green;
+  }
+  div[data-resize-action=bottom-left]:hover {
+    cursor: nesw-resize;
+    background-color: green;
+  }
+  div[data-resize-action=bottom-right]:hover {
+    cursor: nwse-resize;
+    background-color: green;
+  }
+}
+
+:global(.crop-overlay-wrapper) {
+  width: auto;
+  height: auto;
+}
+
 :global(.crop-grid) {
-  position: relative;
-  z-index: 5;
-  width: 100%;
-  height: 100%;
-  // background: red;
+  position: absolute;
+  z-index: 1010;
+  pointer-events: none;
+}
+
+:global(.crop-grid) .TransformableEntityCornerHandle {
+  pointer-events: all;
+  background-color: red;
 }
 
 :global(.crop-dashed) {
   position: absolute;
   border: 1px solid rgba(255, 255, 255, 0.5);
+  pointer-events: none;
 }
 
 :global(.crop-dashed.crop-dashed-v) {
