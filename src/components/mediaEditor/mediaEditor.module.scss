@@ -17,6 +17,7 @@
   z-index: 4;
 
   &Preview {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -500,3 +501,44 @@
     max-height: unset;
   }
 }
+
+.MediaEditor {
+  &Crop {
+    position: absolute;
+    max-width: 600px;
+    bottom: 48px;
+    left: calc(50% - 300px);
+
+    :global(.crop-overlay-color) {
+      background-color: rgba(0, 0, 0, 0.25);
+      border-radius: 0;
+    }
+
+    :global(.crop-overlay) {
+      border-radius: 0;
+    }
+  }
+
+  &CropBarButton {
+    flex-shrink: 0;
+    min-width: 40px;
+  }
+
+  &CropBarContainer {
+    display: flex;
+    align-items: center;
+  }
+
+  &CropBarDegrees {
+    display: flex;
+    gap: 18px;
+    width: calc(600px - 80px);
+    overflow: scroll;
+  }
+
+  &MediaEditorCropBarDegreesBar {
+    width: 600px;
+  }
+
+  &CropWorkArea {}
+};

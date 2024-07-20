@@ -13,7 +13,6 @@ import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
-// import png from './main-canvas.png';
 import png from './main-canvas-big.png';
 import debounce from '../../helpers/schedulers/debounce';
 import {useAppState} from '../../stores/appState';
@@ -35,6 +34,10 @@ import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, EraserTool} fro
 import StickersTab from './sticker-tab';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
 import EmoticonsDropdown from './emoticons-dropdown';
+import resizeableImage from '../../lib/cropper';
+import ResizeableImage from './resizeableImage';
+import {Crop} from './crop';
+import type {CropAspectRatio} from './crop';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -355,8 +358,7 @@ export const MediaEditor = () => {
     ]
   }
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
-
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
 
   const handleTabClick = (tab: MediaEditorTab) => {
@@ -391,60 +393,75 @@ export const MediaEditor = () => {
 
   // * Canvas Renderer
   const renderMedia = () => {
-    alert('render media');
+    return new Promise((resolve, reject) => {
+      // Create a new canvas for the resulting image
+      const resultCanvas = document.createElement('canvas');
+      resultCanvas.width = filterLayerCanvas.width;
+      resultCanvas.height = filterLayerCanvas.height;
+      const resultCtx = resultCanvas.getContext('2d');
 
-    // Создаем новый канвас для результирующего изображения
-    const resultCanvas = document.createElement('canvas');
-    resultCanvas.width = filterLayerCanvas.width;
-    resultCanvas.height = filterLayerCanvas.height;
-    const resultCtx = resultCanvas.getContext('2d');
+      // Render the base layer
+      resultCtx.drawImage(filterLayerCanvas, 0, 0);
 
-    // Рендерим основной слой
-    resultCtx.drawImage(filterLayerCanvas, 0, 0);
+      // Render the drawing layer without transparency
+      resultCtx.drawImage(drawingLayerCanvas, 0, 0);
 
-    // Рендерим слой рисования без прозрачности
-    resultCtx.drawImage(drawingLayerCanvas, 0, 0);
+      // Render stickers
+      state.entities.forEach(entity => {
+        if(isStickerEntity(entity)) {
+          resultCtx.drawImage(
+            entity.node, // Assuming `node` is an image element
+            entity.x,
+            entity.y,
+            entity.width === 'auto' ? 100 : entity.width,
+            entity.height === 'auto' ? 100 : entity.height
+          );
+        }
+      });
 
-    // Рендерим стикеры
-    state.entities.forEach(entity => {
-      if(isStickerEntity(entity)) {
-        resultCtx.drawImage(
-          entity.node, // Assuming randomColorImage is an image element
-          entity.x,
-          entity.y,
-          entity.width,
-          entity.height
-        );
-      }
-    });
+      // Render text nodes
+      state.entities.forEach(entity => {
+        if(isTextEntity(entity)) {
+          resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+          resultCtx.fillStyle = entity.color;
+          resultCtx.textAlign = entity.textAlign;
+          resultCtx.save();
+          resultCtx.translate(entity.x + (entity as any).width / 2, entity.y + (entity as any).height / 2);
+          resultCtx.rotate((entity.rotate * Math.PI) / 180);
+          resultCtx.fillText(
+            'Your Text Here', // Replace with the actual text if available in the entity object
+            -entity.width / 2,
+            entity.fontSize / 2
+          );
+          resultCtx.restore();
+        }
+      });
 
-    // Рендерим текстовые ноды
-    state.entities.forEach(entity => {
-      if(isTextEntity(entity)) {
-        resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
-        resultCtx.fillStyle = entity.color;
-        resultCtx.textAlign = entity.textAlign;
-        resultCtx.save();
-        resultCtx.translate(entity.x + entity.width / 2, entity.y + entity.height / 2);
-        resultCtx.rotate((entity.rotate * Math.PI) / 180);
-        resultCtx.fillText(
-          'Your Text Here', // Replace with the actual text if available in the entity object
-          -entity.width / 2,
-          entity.fontSize / 2
-        );
-        resultCtx.restore();
-      }
-    });
-
-    // Преобразуем канвас в изображение и скачиваем его
-    resultCanvas.toBlob((blob) => {
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'result.png';
-      link.click();
+      // Convert canvas to blob and resolve with the blob URL
+      resultCanvas.toBlob((blob) => {
+        if(blob) {
+          const blobUrl = URL.createObjectURL(blob);
+          resolve(blobUrl);
+        } else {
+          reject(new Error('Failed to create blob'));
+        }
+      }, 'image/png');
     });
   };
 
+  // * Tab Handlers
+  const handleCropTabToggle = async() => {
+    const preview = await renderMedia() as string;
+    setPreview(preview);
+
+    const img = new Image();
+    img.src = preview;
+
+    // cropPreview, setCropPreview
+
+    setCropPreview(img);
+    handleTabClick('crop');
+  }
 
   // * Handlers
   const handleFilterUpdate = (type: FilterType) => {
@@ -544,6 +561,11 @@ export const MediaEditor = () => {
     setState('entities', state.selectedEntityId, {textAlign})
   };
 
+  const [preview, setPreview] = createSignal<string>();
+
+  const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
+  const [cropAspectRatio, setCropAspectRatio] = createSignal<CropAspectRatio>('Free');
+
   // * On Mount
   onMount(() => {
     const image = new Image();
@@ -577,13 +599,13 @@ export const MediaEditor = () => {
       // const stickers = new StickersTab(rootScope.managers);
       // stickers.init();
 
-      const stickers = EmoticonsDropdown.getElement();
+      // const stickers = EmoticonsDropdown.getElement();
 
-      EmoticonsDropdown.init((target: any) => {
-        addStickerEntity(target);
-      });
+      // EmoticonsDropdown.init((target: any) => {
+      //   addStickerEntity(target);
+      // });
 
-      stickerTabRef.appendChild(stickers);
+      // stickerTabRef.appendChild(stickers);
     });
 
     image.src = png;
@@ -593,7 +615,52 @@ export const MediaEditor = () => {
     <div class={styles.MediaEditor}>
       <div class={styles.MediaEditorContainer}>
         <div class={styles.MediaEditorPreview}>
-          <div class={styles.MediaEditorPreviewContent} ref={previewRef}>
+          {activeTab() !== 'crop' && (
+            <div class={styles.MediaEditorPreviewContent} ref={previewRef}>
+              <For each={state.entities}>
+                {(entity) => {
+                  return (
+                    <TransformableEntity
+                      previewRef={previewRef}
+                      id={entity.id}
+                      x={entity.x}
+                      y={entity.y}
+                      width={entity.width}
+                      height={entity.height}
+                      isSelected={entity.id === state.selectedEntityId}
+                      onMove={({x, y}) => {
+                        if(entity.id !== state.selectedEntityId) {
+                          selectEntity(entity.id);
+                        }
+
+                        setState('entities', entity.id, {x, y});
+                      }}
+                      controls={[
+                        <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
+                      ]}
+                    >
+                      {isTextEntity(entity) ? (
+                        <TextEntity {...entity} />
+                      ) : (
+                        <StickerEntity {...entity} />
+                      )}
+                    </TransformableEntity>
+                  )
+                }}
+              </For>
+
+              <canvas
+                ref={drawingLayerCanvas}
+                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)}
+              />
+              <canvas
+                ref={filterLayerCanvas}
+                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
+              />
+            </div>
+          )}
+
+          {/* <div class={styles.MediaEditorPreviewContent} ref={previewRef}>
             <For each={state.entities}>
               {(entity) => {
                 return (
@@ -626,9 +693,23 @@ export const MediaEditor = () => {
               }}
             </For>
 
-            <canvas class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)} ref={drawingLayerCanvas} />
-            <canvas class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)} ref={filterLayerCanvas} />
-          </div>
+            <canvas
+              ref={drawingLayerCanvas}
+              class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)}
+            />
+            <canvas
+              ref={filterLayerCanvas}
+              class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
+            />
+          </div> */}
+
+          {activeTab() === 'crop' && (
+            <Crop
+              image={cropPreview()}
+              aspectRatio={cropAspectRatio()}
+              onCrop={() => alert('crop happened')}
+            />
+          )}
         </div>
 
         <div class={styles.MediaEditorSidebar}>
@@ -652,7 +733,7 @@ export const MediaEditor = () => {
                 icon="crop"
                 noRipple={true}
                 class={classNames(styles.MediaEditorSidebarTabsListTab, activeTab() === 'crop' && styles.active)}
-                onClick={() => handleTabClick('crop')}
+                onClick={handleCropTabToggle}
               />
               <ButtonIconTsx
                 icon="text"
@@ -769,57 +850,57 @@ export const MediaEditor = () => {
                   </div>
 
                   <div class={styles.MediaEditorSidebarTabsContentTabPanelCrop}>
-                    <RowTsx title='Free' icon='aspect_ratio_free' clickable={() => true} />
-                    <RowTsx title='Original' icon='aspect_ratio_image_original' clickable={() => true} />
-                    <RowTsx title='Square' icon='aspect_ratio_square' clickable={() => true} />
+                    <RowTsx title='Free' icon='aspect_ratio_free' clickable={() => setCropAspectRatio('Free')} />
+                    <RowTsx title='Original' icon='aspect_ratio_image_original' clickable={() => setCropAspectRatio('Original')} />
+                    <RowTsx title='Square' icon='aspect_ratio_square' clickable={() => setCropAspectRatio('Square')} />
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='3:2' icon='aspect_ratio_3_2' clickable={() => true} />
+                      <RowTsx title='3:2' icon='aspect_ratio_3_2' clickable={() => setCropAspectRatio('3:2')} />
                       <RowTsx
                         title='2:3'
                         icon='aspect_ratio_3_2'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => true}
+                        clickable={() => setCropAspectRatio('2:3')}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='4:3' icon='aspect_ratio_4_3' clickable={() => true} />
+                      <RowTsx title='4:3' icon='aspect_ratio_4_3' clickable={() => setCropAspectRatio('4:3')} />
                       <RowTsx
                         title='3:4'
                         icon='aspect_ratio_4_3'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => true}
+                        clickable={() => setCropAspectRatio('3:4')}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='5:4' icon='aspect_ratio_5_4' clickable={() => true} />
+                      <RowTsx title='5:4' icon='aspect_ratio_5_4' clickable={() => setCropAspectRatio('5:4')} />
                       <RowTsx
                         title='4:5'
                         icon='aspect_ratio_5_4'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => true}
+                        clickable={() => setCropAspectRatio('4:5')}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='7:5' icon='aspect_ratio_7_5' clickable={() => true} />
+                      <RowTsx title='7:5' icon='aspect_ratio_7_5' clickable={() => setCropAspectRatio('7:5')} />
                       <RowTsx
                         title='5:7'
                         icon='aspect_ratio_7_5'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => true}
+                        clickable={() => setCropAspectRatio('5:7')}
                       />
                     </div>
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
-                      <RowTsx title='16:9' icon='aspect_ratio_16_9' clickable={() => true} />
+                      <RowTsx title='16:9' icon='aspect_ratio_16_9' clickable={() => setCropAspectRatio('16:9')} />
                       <RowTsx
                         title='9:16'
                         icon='aspect_ratio_16_9'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => true}
+                        clickable={() => setCropAspectRatio('9:16')}
                       />
                     </div>
                   </div>
