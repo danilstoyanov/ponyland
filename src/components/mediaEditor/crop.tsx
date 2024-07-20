@@ -31,6 +31,7 @@ interface CropPops {
 
 export const Crop = (props: CropPops) => {
   let containerRef: HTMLDivElement;
+  let containerWrapperRef: HTMLDivElement;
   let cropImageRef: HTMLImageElement;
   let overlayImageRef: HTMLImageElement;
 
@@ -70,6 +71,9 @@ export const Crop = (props: CropPops) => {
   function updateCropSize(width: number, height: number) {
     containerRef.style.width = width + 'px';
     containerRef.style.height = height + 'px';
+
+    containerWrapperRef.style.width = width + 'px';
+    containerWrapperRef.style.height = height + 'px';
   }
 
   function updateCropImage(left: number, top: number) {
@@ -80,6 +84,9 @@ export const Crop = (props: CropPops) => {
   function updateContainer(left: number, top: number) {
     containerRef.style.top = top + 'px';
     containerRef.style.left = left + 'px';
+
+    containerWrapperRef.style.top = top + 'px';
+    containerWrapperRef.style.left = left + 'px';
   }
 
   // Events
@@ -172,6 +179,8 @@ export const Crop = (props: CropPops) => {
 
   onMount(() => {
     overlayImageRef.onload = init;
+
+    handleCropAreaResize();
   });
 
   onCleanup(() => {
@@ -241,46 +250,165 @@ export const Crop = (props: CropPops) => {
     adjustCropSizeToAspectRatio(props.aspectRatio);
   });
 
+  const handleCropAreaResize = () => {
+    const cropperBox = containerRef;
+    const cropperOutBox = containerWrapperRef;
 
-  // Usage of the method
-  createEffect(() => {
-    adjustCropSizeToAspectRatio(props.aspectRatio);
-  });
+    const topRightNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-right]');
+    const topLeftNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-left]');
+    const bottomLeftNode = document.querySelector<HTMLDivElement>('[data-resize-action=bottom-left]');
+    const bottomRightNode = document.querySelector<HTMLDivElement>('[data-resize-action=bottom-right]');
 
+    const resizers: HTMLDivElement[] = [
+      topRightNode,
+      topLeftNode,
+      bottomLeftNode,
+      bottomRightNode
+    ];
 
-  createEffect(() => {
-    console.log('props.aspectRatio: ', props.aspectRatio);
-  });
+    const minimum_size = 20;
+
+    resizers.forEach(currentResizer => {
+      currentResizer.addEventListener('mousedown', (e: MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startY = e.clientY;
+
+        const initialWidth = cropperBox.offsetWidth;
+        const initialHeight = cropperBox.offsetHeight;
+        const initialLeft = cropperBox.offsetLeft;
+        const initialTop = cropperBox.offsetTop;
+
+        const action = currentResizer.dataset.resizeAction;
+
+        function resize(e: MouseEvent) {
+          if(action === 'top-right') {
+            const width = initialWidth + (e.clientX - startX);
+            const height = initialHeight - (e.clientY - startY);
+            if(width > minimum_size) {
+              cropperBox.style.width = width + 'px';
+              cropperOutBox.style.width = width + 'px';
+            }
+            if(height > minimum_size) {
+              cropperBox.style.height = height + 'px';
+              cropperOutBox.style.height = height + 'px';
+              cropperBox.style.top = initialTop + (e.clientY - startY) + 'px';
+              cropperOutBox.style.top = initialTop + (e.clientY - startY) + 'px';
+            }
+          } else if(action === 'top-left') {
+            const width = initialWidth - (e.clientX - startX);
+            const height = initialHeight - (e.clientY - startY);
+            if(width > minimum_size) {
+              cropperBox.style.width = width + 'px';
+              cropperOutBox.style.width = width + 'px';
+              cropperBox.style.left = initialLeft + (e.clientX - startX) + 'px';
+              cropperOutBox.style.left = initialLeft + (e.clientX - startX) + 'px';
+            }
+            if(height > minimum_size) {
+              cropperBox.style.height = height + 'px';
+              cropperOutBox.style.height = height + 'px';
+              cropperBox.style.top = initialTop + (e.clientY - startY) + 'px';
+              cropperOutBox.style.top = initialTop + (e.clientY - startY) + 'px';
+            }
+          } else if(action === 'bottom-right') {
+            const width = initialWidth + (e.clientX - startX);
+            const height = initialHeight + (e.clientY - startY);
+            if(width > minimum_size) {
+              cropperBox.style.width = width + 'px';
+              cropperOutBox.style.width = width + 'px';
+            }
+            if(height > minimum_size) {
+              cropperBox.style.height = height + 'px';
+              cropperOutBox.style.height = height + 'px';
+            }
+          } else if(action === 'bottom-left') {
+            const width = initialWidth - (e.clientX - startX);
+            const height = initialHeight + (e.clientY - startY);
+            if(width > minimum_size) {
+              cropperBox.style.width = width + 'px';
+              cropperOutBox.style.width = width + 'px';
+              cropperBox.style.left = initialLeft + (e.clientX - startX) + 'px';
+              cropperOutBox.style.left = initialLeft + (e.clientX - startX) + 'px';
+            }
+            if(height > minimum_size) {
+              cropperBox.style.height = height + 'px';
+              cropperOutBox.style.height = height + 'px';
+            }
+          }
+        }
+
+        function stopResize() {
+          window.removeEventListener('mousemove', resize);
+          window.removeEventListener('mouseup', stopResize);
+
+          // Ensure the crop area stays within the image bounds after resizing
+          const newWidth = cropperBox.offsetWidth;
+          const newHeight = cropperBox.offsetHeight;
+
+          if(cropperBox.offsetLeft + newWidth > cropImageRef.offsetWidth) {
+            cropperBox.style.left = cropImageRef.offsetWidth - newWidth + 'px';
+            cropperOutBox.style.left = cropImageRef.offsetWidth - newWidth + 'px';
+          }
+          if(cropperBox.offsetTop + newHeight > cropImageRef.offsetHeight) {
+            cropperBox.style.top = cropImageRef.offsetHeight - newHeight + 'px';
+            cropperOutBox.style.top = cropImageRef.offsetHeight - newHeight + 'px';
+          }
+
+          adjustCropSizeToAspectRatio(props.aspectRatio); // Adjust to the aspect ratio after resizing
+        }
+
+        window.addEventListener('mousemove', resize);
+        window.addEventListener('mouseup', stopResize);
+      });
+    });
+  };
 
   return (
     <div class={styles.MediaEditorCrop}>
       <div class={styles.MediaEditorCropWorkArea}>
         <div class="crop-component">
-          <div class="crop-overlay" ref={containerRef}>
-            <div class="crop-grid">
-              <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopLeft}`}>
+          <div class="crop-overlay-wrapper">
+            <div class="crop-overlay" ref={containerRef}>
+              <img
+                ref={cropImageRef}
+                draggable={false}
+                src={props.image.src}
+                class="crop-overlay-image"
+              />
+            </div>
+
+            <div class="crop-grid" ref={containerWrapperRef}>
+              <div
+                class={`${styles.TransformableEntityCornerHandle} ${styles.TopLeft}`}
+                data-resize-action="top-left"
+              >
                 <div class={styles.TransformableEntityCorner}></div>
               </div>
-              <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopRight}`}>
+
+              <div
+                class={`${styles.TransformableEntityCornerHandle} ${styles.TopRight}`}
+                data-resize-action="top-right"
+              >
                 <div class={styles.TransformableEntityCorner}></div>
               </div>
-              <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomLeft}`}>
+
+              <div
+                class={`${styles.TransformableEntityCornerHandle} ${styles.BottomLeft}`}
+                data-resize-action="bottom-left"
+              >
                 <div class={styles.TransformableEntityCorner}></div>
               </div>
-              <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomRight}`}>
+
+              <div
+                class={`${styles.TransformableEntityCornerHandle} ${styles.BottomRight}`}
+                data-resize-action="bottom-right"
+              >
                 <div class={styles.TransformableEntityCorner}></div>
               </div>
 
               <div class="crop-dashed crop-dashed-v"></div>
               <div class="crop-dashed crop-dashed-h"></div>
             </div>
-
-            <img
-              ref={cropImageRef}
-              draggable={false}
-              src={props.image.src}
-              class="crop-overlay-image"
-            />
           </div>
 
           <img ref={overlayImageRef} draggable={false} src={props.image.src}/>
