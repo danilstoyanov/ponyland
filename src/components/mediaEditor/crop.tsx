@@ -305,16 +305,38 @@ export const Crop = (props: CropPops) => {
             left = initialLeft + (e.clientX - startX);
           }
 
-          if(width > minimum_size) {
-            cropperBox.style.width = width + 'px';
-            cropperOutBox.style.width = width + 'px';
+          // Ensure minimum size
+          if(width < minimum_size) width = minimum_size;
+          if(height < minimum_size) height = minimum_size;
+
+          // Respect the selected aspect ratio
+          switch(props.aspectRatio) {
+            case 'Free':
+              break; // Allow free resizing
+            case 'Original':
+              const originalAspectRatio = props.image.naturalWidth / props.image.naturalHeight;
+              height = width / originalAspectRatio;
+              break;
+            case 'Square':
+              height = width; // Keep width and height equal for square aspect ratio
+              break;
+            default:
+              const [aspectWidth, aspectHeight] = props.aspectRatio.split(':').map(Number);
+              if(aspectWidth && aspectHeight) {
+                if(width / aspectWidth > height / aspectHeight) {
+                  width = height * (aspectWidth / aspectHeight);
+                } else {
+                  height = width * (aspectHeight / aspectWidth);
+                }
+              }
+              break;
           }
 
-          if(height > minimum_size) {
-            cropperBox.style.height = height + 'px';
-            cropperOutBox.style.height = height + 'px';
-          }
-
+          // Update the cropper dimensions and position
+          cropperBox.style.width = width + 'px';
+          cropperOutBox.style.width = width + 'px';
+          cropperBox.style.height = height + 'px';
+          cropperOutBox.style.height = height + 'px';
           cropperBox.style.left = left + 'px';
           cropperOutBox.style.left = left + 'px';
           cropperBox.style.top = top + 'px';
@@ -323,37 +345,26 @@ export const Crop = (props: CropPops) => {
           const maxWidth = overlayImageRef.offsetWidth;
           const maxHeight = overlayImageRef.offsetHeight;
 
+          // Ensure cropper stays within image bounds
           if(width > maxWidth) {
-            cropperBox.style.width = maxWidth + 'px';
-            cropperOutBox.style.width = maxWidth + 'px';
+            width = maxWidth;
+            cropperBox.style.width = width + 'px';
+            cropperOutBox.style.width = width + 'px';
           }
 
           if(height > maxHeight) {
-            cropperBox.style.height = maxHeight + 'px';
-            cropperOutBox.style.height = maxHeight + 'px';
+            height = maxHeight;
+            cropperBox.style.height = height + 'px';
+            cropperOutBox.style.height = height + 'px';
           }
 
+          // Update the crop image position
           updateCropImage(left, top);
         }
 
         function stopResize() {
           window.removeEventListener('mousemove', resize);
           window.removeEventListener('mouseup', stopResize);
-
-          // Ensure the crop area stays within the image bounds after resizing
-          const newWidth = cropperBox.offsetWidth;
-          const newHeight = cropperBox.offsetHeight;
-
-          if(cropperBox.offsetLeft + newWidth > cropImageRef.offsetWidth) {
-            cropperBox.style.left = cropImageRef.offsetWidth - newWidth + 'px';
-            cropperOutBox.style.left = cropImageRef.offsetWidth - newWidth + 'px';
-          }
-          if(cropperBox.offsetTop + newHeight > cropImageRef.offsetHeight) {
-            cropperBox.style.top = cropImageRef.offsetHeight - newHeight + 'px';
-            cropperOutBox.style.top = cropImageRef.offsetHeight - newHeight + 'px';
-          }
-
-          adjustCropSizeToAspectRatio(props.aspectRatio); // Adjust to the aspect ratio after resizing
         }
 
         window.addEventListener('mousemove', resize);
