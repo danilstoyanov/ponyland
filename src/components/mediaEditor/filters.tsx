@@ -2,10 +2,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function mix(x: number, y: number, a: number) {
-  return x * (1 - a) + y * a;
-}
-
 export function applyBrightness(canvas: HTMLCanvasElement, intensity: number) {
   const ctx = canvas.getContext('2d');
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -32,8 +28,6 @@ export function applyBrightness(canvas: HTMLCanvasElement, intensity: number) {
 }
 
 export function applyContrast(canvas: HTMLCanvasElement, intensity: number) {
-  debugger;
-
   const ctx = canvas.getContext('2d');
   // Получаем изображение
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
