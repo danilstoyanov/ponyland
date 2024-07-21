@@ -87,84 +87,50 @@ export function applyVignette(canvas: HTMLCanvasElement, intensity: number) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-export function applyEnhanceEffect(canvas: HTMLCanvasElement, intensity: number) {
+export function applyEnhance(canvas: HTMLCanvasElement, intensity: number) {
   const ctx = canvas.getContext('2d');
 
-  // Функция для преобразования RGB в HSL
-  function rgbToHsl(r: number, g: number, b: number) {
-    r /= 255;
-    g /= 255;
-    b /= 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    let h, s;
-    const l = (max + min) / 2;
+  if(!ctx) return;
 
-    if(max == min) {
-      h = s = 0; // achromatic
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-      switch(max) {
-        case r:
-          h = (g - b) / d + (g < b ? 6 : 0);
-          break;
-        case g:
-          h = (b - r) / d + 2;
-          break;
-        case b:
-          h = (r - g) / d + 4;
-          break;
-      }
-      h /= 6;
-    }
-    return [h, s, l];
-  }
+  const width = canvas.width;
+  const height = canvas.height;
 
-  // Функция для преобразования HSL в RGB
-  function hslToRgb(h: number, s: number, l: number) {
-    let r, g, b;
-
-    if(s == 0) {
-      r = g = b = l; // achromatic
-    } else {
-      const hue2rgb = (p: number, q: number, t: number) => {
-        if(t < 0) t += 1;
-        if(t > 1) t -= 1;
-        if(t < 1 / 6) return p + (q - p) * 6 * t;
-        if(t < 1 / 3) return q;
-        if(t < 1 / 2) return p + (q - p) * (2 / 3 - t) * 6;
-        return p;
-      };
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      r = hue2rgb(p, q, h + 1 / 3);
-      g = hue2rgb(p, q, h);
-      b = hue2rgb(p, q, h - 1 / 3);
-    }
-
-    return [r * 255, g * 255, b * 255];
-  }
-
-  // Получаем изображение
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  // Get the image data from the canvas
+  const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
 
-  // Обрабатываем пиксели
+  // Helper function to clamp values
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+  // Adjust intensity to be between 0 and 1, and scale adjustments for increased intensity
+  const brightnessFactor = 1 + 0.2 * Math.min(Math.max(intensity, 0), 1); // Increase brightness more
+  const saturationFactor = 1 + 0.4 * Math.min(Math.max(intensity, 0), 1); // Increase saturation more
+
+  // Loop through each pixel
   for(let i = 0; i < data.length; i += 4) {
-    const hsl = rgbToHsl(data[i], data[i + 1], data[i + 2]);
+    // Extract RGB components
+    let r = data[i] / 255;
+    let g = data[i + 1] / 255;
+    let b = data[i + 2] / 255;
 
-    // Применение эффектов с учетом коэффициента интенсивности
-    hsl[2] = hsl[2] * (1 + 0.1 * intensity); // Увеличение яркости
-    hsl[1] = hsl[1] * (1 + 0.2 * intensity); // Увеличение насыщенности
+    // Apply brightness adjustment
+    r = clamp(r * brightnessFactor, 0, 1);
+    g = clamp(g * brightnessFactor, 0, 1);
+    b = clamp(b * brightnessFactor, 0, 1);
 
-    const rgb = hslToRgb(hsl[0], hsl[1], hsl[2]);
-    data[i] = rgb[0];
-    data[i + 1] = rgb[1];
-    data[i + 2] = rgb[2];
+    // Apply saturation adjustment
+    const avg = (r + g + b) / 3;
+    r = clamp(avg + (r - avg) * saturationFactor, 0, 1);
+    g = clamp(avg + (g - avg) * saturationFactor, 0, 1);
+    b = clamp(avg + (b - avg) * saturationFactor, 0, 1);
+
+    // Update pixel values
+    data[i] = r * 255;
+    data[i + 1] = g * 255;
+    data[i + 2] = b * 255;
   }
 
-  // Применяем изменения к Canvas
+  // Put the modified image data back onto the canvas
   ctx.putImageData(imageData, 0, 0);
 }
 
