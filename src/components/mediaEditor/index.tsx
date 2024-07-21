@@ -695,10 +695,10 @@ export const MediaEditor = () => {
                     ]}
                   >
                     {isTextEntity(entity) ? (
-                        <TextEntity {...entity} />
-                      ) : (
-                        <StickerEntity {...entity} />
-                      )}
+                      <TextEntity {...entity} />
+                    ) : (
+                      <StickerEntity {...entity} />
+                    )}
                   </TransformableEntity>
                 )
               }}
@@ -716,14 +716,13 @@ export const MediaEditor = () => {
           {/* )} */}
 
           {activeTab() === 'crop' && (
-            <h1>CROP</h1>
-            // <div class={styles.MediaEditorCropContent} ref={previewRef}>
-            //   <Crop
-            //     image={cropPreview()}
-            //     aspectRatio={cropAspectRatio()}
-            //     onCrop={() => alert('crop happened')}
-            //   />
-            // </div>
+            <div class={styles.MediaEditorCropContent} ref={previewRef}>
+              <Crop
+                image={cropPreview()}
+                aspectRatio={cropAspectRatio()}
+                onCrop={() => alert('crop happened')}
+              />
+            </div>
           )}
         </div>
 
