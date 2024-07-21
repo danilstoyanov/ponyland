@@ -13,21 +13,22 @@ import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
-import png from './main-canvas-big.png';
+import png from './main-canvas.png';
 // import png from './small.png';
 import debounce from '../../helpers/schedulers/debounce';
 import {useAppState} from '../../stores/appState';
 import {
   applyBrightness,
   applyContrast,
-  applyVignetteEffect,
+  applyVignette,
   applyEnhanceEffect,
   applySaturation,
   applyWarmth,
   applyFade,
   applyHighlights,
   applySelectiveShadow,
-  applyGrain
+  applyGrain,
+  applySharp
 } from './filters';
 import {isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
@@ -245,6 +246,7 @@ type MediaEditorFilter = {
 type MediaEditorFilterState = {
   cache: Record<string, ImageBitmap>;
   appliedFilters: MediaEditorFilter[];
+  isProcessing: boolean;
 };
 
 export const MediaEditor = () => {
@@ -373,7 +375,8 @@ export const MediaEditor = () => {
 
   const initialFilterState: MediaEditorFilterState = {
     cache: {},
-    appliedFilters: []
+    appliedFilters: [],
+    isProcessing: false
   };
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
@@ -485,30 +488,105 @@ export const MediaEditor = () => {
     handleTabClick('crop');
   }
 
-  // * Handlers
+  // * FITLER UPDATE WITH CACHING APPLIED
+  // const handleFilterUpdate = (type: FilterType) => {
+  //   return throttle(async(value: number) => {
+  //     const ctx = filterLayerCanvas.getContext('2d');
+  //     const dimensions = getScaledImageSize(previewRef, originalImage());
+
+  //     const filterMap: any = {
+  //       brightness: () => {applyBrightness(filterLayerCanvas, value)},
+  //       contrast: () => {
+  //         // const ctx = filterLayerCanvas.getContext('2d');
+  //         // const dimensions = getScaledImageSize(previewRef, originalImage());
+  //         // ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+
+  //         applyContrast(filterLayerCanvas, value);
+  //       },
+  //       saturation: () => applySaturation(filterLayerCanvas, value),
+  //       enhance: () => applyEnhanceEffect(filterLayerCanvas, value),
+  //       fade: () => applyFade(filterLayerCanvas, value),
+  //       grain: () => applyGrain(filterLayerCanvas, value),
+  //       highlights: () => applyHighlights(filterLayerCanvas, value),
+  //       shadows: () => applySelectiveShadow(filterLayerCanvas, value),
+  //       vignette: () => applyVignette(filterLayerCanvas, value),
+  //       warmth: () => applyWarmth(filterLayerCanvas, value),
+  //       sharpen: () => applySharp(filterLayerCanvas, value)
+  //     }
+
+  //     // UPDATING APPLIED FILTERS
+  //     // -- COULD BE ENABLED
+  //     // -- COULD BE DISABLED
+  //     setFilterState('appliedFilters', (filters) => {
+  //       if(value === 0) {
+  //         return filters.filter(v => v.id !== type);
+  //       }
+
+  //       if(filters.some(v => v.id === type)) {
+  //         return filters.map(v => v.id === type ? {...v, value} : v);
+  //       }
+
+  //       return [...filters, {id: type, value}];
+  //     });
+
+  //     // PRE-RENDER CACHE TO CANVAS
+  //     // -- ЕСЛИ ПРИМЕНЕН ТОЛЬКО ОДИН ФИЛЬТР, ПРИМЕНЯЕМ ЕГО НА ОРИГИНАЛЬНОМ ИЗОБРАЖЕНИИ
+  //     // -- ЕСЛИ ПРИМЕНЕНО 2 > фильтров, накатываем кеш
+  //     if(filterState.appliedFilters.length <= 1) {
+  //       ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+  //     } else {
+  //       const cacheKey = filterState.appliedFilters.map(filter => filter.id).join(',');
+  //       const cacheKeys = Object.keys(filterState.cache);
+  //       const currentFilterCacheKey = filterState.appliedFilters.map(filter => filter.id).slice(0, -1).join(',');
+
+  //       // console.log('cacheKeys: ', cacheKeys);
+  //       // console.log('cacheKey: ', cacheKey);
+  //       // console.log('currentFilterCache: ', currentFilterCacheKey);
+  //       // console.log('currentFilterCache unwrap(filterState): ', unwrap(filterState));
+
+  //       if(filterState.cache[currentFilterCacheKey]) {
+  //         ctx.drawImage(filterState.cache[currentFilterCacheKey], 0, 0, dimensions.width, dimensions.height);
+  //       }
+  //     }
+
+  //     // FILTER PERFORMANCE
+  //     console.log('FILTER TYPE: ', type, 'FILTER VALUE: ', value);
+  //     const startTime = performance.now();
+  //     filterMap[type]();
+  //     const endTime = performance.now();
+  //     // Calculate the elapsed time
+  //     const elapsedTime = endTime - startTime;
+  //     console.log(`Execution time: ${elapsedTime} milliseconds`);
+
+  //     // SAVE CACHE FOR FURTHER PRE-RENDERS
+  //     if(filterState.appliedFilters.length >= 2) {
+  //       const toCache = await createImageBitmap(filterLayerCanvas);
+  //       const cacheKey = filterState.appliedFilters.map(filter => filter.id).join(',');
+
+  //       setFilterState('cache', {[cacheKey]: toCache});
+  //     }
+  //   }, 16);
+  // };
+
+  // * FITLER UPDATE WITH RENDER-PIPELINE APPLIED
   const handleFilterUpdate = (type: FilterType) => {
     return throttle(async(value: number) => {
       const ctx = filterLayerCanvas.getContext('2d');
       const dimensions = getScaledImageSize(previewRef, originalImage());
+      ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
 
-      const filterMap: any = {
-        brightness: () => {applyBrightness(filterLayerCanvas, value)},
-        contrast: () => {
-          const ctx = filterLayerCanvas.getContext('2d');
-          const dimensions = getScaledImageSize(previewRef, originalImage());
-          ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
-
-          applyContrast(filterLayerCanvas, value);
-        },
-        saturation: () => applySaturation(filterLayerCanvas, value),
-        enhance: () => applyEnhanceEffect(filterLayerCanvas, value),
-        fade: () => applyFade(filterLayerCanvas, value),
-        grain: () => applyGrain(filterLayerCanvas, value),
-        highlights: () => applyHighlights(filterLayerCanvas, value),
-        shadows: () => applySelectiveShadow(filterLayerCanvas, value),
-        sharpen: () => applyVignetteEffect(filterLayerCanvas, value),
-        vignette: () => {},
-        warmth: () => applyWarmth(filterLayerCanvas, value)
+      const filterMap: Record<FilterType, any> = {
+        brightness: applyBrightness,
+        contrast: applyContrast,
+        saturation: applySaturation,
+        enhance: applyEnhanceEffect,
+        fade: applyFade,
+        grain: applyGrain,
+        highlights: applyHighlights,
+        shadows: applySelectiveShadow,
+        sharpen: applySharp,
+        warmth: applyWarmth,
+        vignette: applyVignette
       }
 
       // UPDATING APPLIED FILTERS
@@ -526,52 +604,27 @@ export const MediaEditor = () => {
         return [...filters, {id: type, value}];
       });
 
-      // PRE-RENDER CACHE TO CANVAS
-      // -- ЕСЛИ ПРИМЕНЕН ТОЛЬКО ОДИН ФИЛЬТР, ПРИМЕНЯЕМ ЕГО НА ОРИГИНАЛЬНОМ ИЗОБРАЖЕНИИ
-      // -- ЕСЛИ ПРИМЕНЕНО 2 > фильтров, накатываем кеш
-      if(filterState.appliedFilters.length <= 1) {
-        ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
-      } else {
-        const cacheKey = filterState.appliedFilters.map(filter => filter.id).join(',');
-        const cacheKeys = Object.keys(filterState.cache);
-        const currentFilterCacheKey = filterState.appliedFilters.map(filter => filter.id).slice(0, -1).join(',');
+      // FILTER PERFORMANCE
+      console.log('FILTER TYPE: ', type, 'FILTER VALUE: ', value);
+      const startTime = performance.now();
 
-        console.log('cacheKeys: ', cacheKeys);
-        console.log('cacheKey: ', cacheKey);
-        console.log('currentFilterCache: ', currentFilterCacheKey);
-        console.log('currentFilterCache unwrap(filterState): ', unwrap(filterState));
+      filterState.appliedFilters.forEach(filter => {
+        console.log(filterState.appliedFilters.map(v => v.id));
 
-        if(filterState.cache[currentFilterCacheKey]) {
-          ctx.drawImage(filterState.cache[currentFilterCacheKey], 0, 0, dimensions.width, dimensions.height);
+        if(type === filter.id) {
+          filterMap[filter.id](filterLayerCanvas, value);
+        } else {
+          filterMap[filter.id](filterLayerCanvas, filter.value);
         }
-      }
+      })
 
-      // APPLYING FILTER
-      filterMap[type]();
-
-      // SAVE CACHE FOR FURTHER PRE-RENDERS
-      if(filterState.appliedFilters.length >= 2) {
-        const toCache = await createImageBitmap(filterLayerCanvas);
-        const cacheKey = filterState.appliedFilters.map(filter => filter.id).join(',');
-
-        console.log('toCache: ', toCache);
-
-        setFilterState('cache', {[cacheKey]: toCache});
-      }
-    }, 50);
+      const endTime = performance.now();
+      // Calculate the elapsed time
+      const elapsedTime = endTime - startTime;
+      console.log(`Execution time: ${elapsedTime} milliseconds`);
+    }, 8);
   };
 
-  // FILTER PERFORMANCE
-  // console.log('FILTER TYPE: ', type, 'FILTER VALUE: ', value);
-
-  // const startTime = performance.now();
-  // filterMap[type]();
-  // const endTime = performance.now();
-
-  // // Calculate the elapsed time
-  // const elapsedTime = endTime - startTime;
-
-  // console.log(`Execution time: ${elapsedTime} milliseconds`);
 
   const handleBrigthnessUpdate = handleFilterUpdate('brightness');
   const handleEnhanceUpdate = handleFilterUpdate('enhance');
@@ -583,6 +636,7 @@ export const MediaEditor = () => {
   const handleShadowsUpdate = handleFilterUpdate('shadows');
   const handleVignetteUpdate = handleFilterUpdate('vignette');
   const handleGrainUpdate = handleFilterUpdate('grain');
+  const handleSharpUpdate = handleFilterUpdate('sharpen');
 
   // * Tools Handlers
   const selectTool = (id: number) => {
@@ -936,6 +990,14 @@ export const MediaEditor = () => {
                       step={0.01}
                       value={0}
                       onScrub={handleVignetteUpdate}
+                    />
+                    <MediaEditorRangeSelector
+                      label="Sharp"
+                      min={0}
+                      max={1}
+                      step={0.01}
+                      value={0}
+                      onScrub={handleSharpUpdate}
                     />
                     <MediaEditorRangeSelector
                       label="Grain"

@@ -1,7 +1,3 @@
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
 export function applyBrightness(canvas: HTMLCanvasElement, intensity: number) {
   const ctx = canvas.getContext('2d');
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -45,40 +41,49 @@ export function applyContrast(canvas: HTMLCanvasElement, intensity: number) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-export function applyVignetteEffect(canvas: HTMLCanvasElement, intensity: number) {
+export function applyVignette(canvas: HTMLCanvasElement, intensity: number) {
+  const ctx = canvas.getContext('2d');
+
+  if(!ctx) return;
+
+  // Get the image data from the canvas
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+
   const width = canvas.width;
   const height = canvas.height;
-
-  const ctx = canvas.getContext('2d');
-  const imageData = ctx.getImageData(0, 0, width, height);
-  const data = imageData.data;
   const centerX = width / 2;
   const centerY = height / 2;
-  const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
-  const midpoint = 0.7;
-  const fuzziness = 0.62;
-  const vignetteAmount = intensity * 0.645;
+  const maxDistance = Math.sqrt(centerX * centerX + centerY * centerY);
 
-  function easeInOutSigmoid(x: number, fuzziness: number) {
-    const y = x - 0.5;
-    return 0.5 + y / (1 + Math.abs(y * fuzziness));
-  }
-
+  // Loop through each pixel
   for(let y = 0; y < height; y++) {
     for(let x = 0; x < width; x++) {
-      const offset = (y * width + x) * 4;
+      const i = (y * width + x) * 4;
+
+      // Calculate the distance from the center
       const dx = x - centerX;
       const dy = y - centerY;
-      const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
-      const radDist = easeInOutSigmoid(dist * midpoint, fuzziness);
-      const mag = radDist * vignetteAmount;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
-      data[offset] = data[offset] * (1 - mag) + 0 * mag;
-      data[offset + 1] = data[offset + 1] * (1 - mag) + 0 * mag;
-      data[offset + 2] = data[offset + 2] * (1 - mag) + 0 * mag;
+      // Calculate the vignette effect, fading in the shadow towards the edges
+      const normalizedDistance = distance / maxDistance;
+
+      // Apply the intensity to the normalized distance to get the vignette factor
+      // ensuring that when intensity is 0, vignetteFactor is also 0
+      const vignetteFactor = normalizedDistance * intensity;
+
+      // Cap the vignette factor to the maximum of 1
+      const finalVignetteFactor = Math.min(1, vignetteFactor);
+
+      // Darken the pixel colors based on the vignette factor
+      data[i] *= (1 - finalVignetteFactor);      // Red channel
+      data[i + 1] *= (1 - finalVignetteFactor);  // Green channel
+      data[i + 2] *= (1 - finalVignetteFactor);  // Blue channel
     }
   }
 
+  // Put the modified image data back onto the canvas
   ctx.putImageData(imageData, 0, 0);
 }
 
@@ -311,6 +316,8 @@ export function applyWarmth(canvas: HTMLCanvasElement, intensity: number) {
 export function applyFade(canvas: HTMLCanvasElement, coefficient: number) {
   const ctx = canvas.getContext('2d');
 
+  if(!ctx) return;
+
   // Get the image data from the canvas
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
@@ -318,46 +325,17 @@ export function applyFade(canvas: HTMLCanvasElement, coefficient: number) {
   // Loop through each pixel
   for(let i = 0; i < data.length; i += 4) {
     // Extract RGB components from image data
-    const r = data[i] / 255;
-    const g = data[i + 1] / 255;
-    const b = data[i + 2] / 255;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
 
-    // Apply the fade effect
-    const comp1R = -0.9772 * Math.pow(r, 3);
-    const comp2R = 1.708 * Math.pow(r, 2);
-    const comp3R = -0.1603 * r;
-    const comp4R = 0.2878;
-    const finalComponentR = comp1R + comp2R + comp3R + comp4R;
-    const differenceR = finalComponentR - r;
-    const scaledR = 0.9 * differenceR;
-    const fadedR = r + scaledR;
+    // Calculate the average value for gray
+    const gray = (r + g + b) / 3;
 
-    const comp1G = -0.9772 * Math.pow(g, 3);
-    const comp2G = 1.708 * Math.pow(g, 2);
-    const comp3G = -0.1603 * g;
-    const comp4G = 0.2878;
-    const finalComponentG = comp1G + comp2G + comp3G + comp4G;
-    const differenceG = finalComponentG - g;
-    const scaledG = 0.9 * differenceG;
-    const fadedG = g + scaledG;
-
-    const comp1B = -0.9772 * Math.pow(b, 3);
-    const comp2B = 1.708 * Math.pow(b, 2);
-    const comp3B = -0.1603 * b;
-    const comp4B = 0.2878;
-    const finalComponentB = comp1B + comp2B + comp3B + comp4B;
-    const differenceB = finalComponentB - b;
-    const scaledB = 0.9 * differenceB;
-    const fadedB = b + scaledB;
-
-    // Apply the coefficient to fade
-    data[i] = Math.round((r * (1 - coefficient) + fadedR * coefficient) * 255);
-    data[i + 1] = Math.round(
-      (g * (1 - coefficient) + fadedG * coefficient) * 255
-    );
-    data[i + 2] = Math.round(
-      (b * (1 - coefficient) + fadedB * coefficient) * 255
-    );
+    // Apply the coefficient to fade to gray
+    data[i] = Math.round(r * (1 - coefficient) + gray * coefficient);
+    data[i + 1] = Math.round(g * (1 - coefficient) + gray * coefficient);
+    data[i + 2] = Math.round(b * (1 - coefficient) + gray * coefficient);
   }
 
   // Put the modified image data back onto the canvas
@@ -367,46 +345,38 @@ export function applyFade(canvas: HTMLCanvasElement, coefficient: number) {
 export function applyHighlights(canvas: HTMLCanvasElement, intensity: number) {
   const ctx = canvas.getContext('2d');
 
+  if(!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+
   // Get the image data from the canvas
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
 
-  // Constants from the shader
-  const hsLuminanceWeighting = [0.3, 0.3, 0.3];
+  // Adjust intensity to be between 0 and 1, and then scale down for reduced effect
+  const adjustedIntensity = Math.min(Math.max(intensity, 0), 1) * 1.5; // Adjust scaling factor as needed
+
+  // Helper function to clamp values
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
 
   // Loop through each pixel
   for(let i = 0; i < data.length; i += 4) {
-    // Calculate luminance weighted average
-    const luminance =
-      0.2126 * (data[i] / 255) +
-      0.7152 * (data[i + 1] / 255) +
-      0.0722 * (data[i + 2] / 255);
+    // Calculate the luminance of the pixel
+    const r = data[i] / 255;
+    const g = data[i + 1] / 255;
+    const b = data[i + 2] / 255;
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
-    // Adjust for intensity
-    const mappedHighlights = intensity * 0.75 + 1.0;
-    const hsLuminance = luminance * hsLuminanceWeighting[0];
+    // Calculate highlight effect based on luminance and intensity
+    // Use a non-linear adjustment to focus highlights on brighter areas
+    const highlightFactor = 1.0 - Math.pow(luminance, 0.5); // More pronounced effect for brighter areas
+    const highlight = highlightFactor * adjustedIntensity;
 
-    // Calculate shadow and highlight adjustments
-    const shadow = clamp(
-      Math.pow(hsLuminance, 1.0 / mappedHighlights) -
-        0.76 * Math.pow(hsLuminance, 2.0 / mappedHighlights) -
-        hsLuminance,
-      0.0,
-      1.0
-    );
-    const highlight = clamp(
-      1.0 -
-        (Math.pow(1.0 - hsLuminance, 1.0 / (2.0 - mappedHighlights)) -
-          0.8 * Math.pow(1.0 - hsLuminance, 2.0 / (2.0 - mappedHighlights))) -
-        hsLuminance,
-      -1.0,
-      0.0
-    );
-
-    // Apply the adjustments to the pixel values
-    data[i] = clamp(data[i] / 255 + shadow + highlight, 0.0, 1.0) * 255;
-    data[i + 1] = clamp(data[i + 1] / 255 + shadow + highlight, 0.0, 1.0) * 255;
-    data[i + 2] = clamp(data[i + 2] / 255 + shadow + highlight, 0.0, 1.0) * 255;
+    // Apply highlight effect to the pixel values
+    data[i] = clamp(r + highlight, 0, 1) * 255;
+    data[i + 1] = clamp(g + highlight, 0, 1) * 255;
+    data[i + 2] = clamp(b + highlight, 0, 1) * 255;
   }
 
   // Put the modified image data back onto the canvas
@@ -466,5 +436,75 @@ export function applyGrain(canvas: HTMLCanvasElement, intensity: number) {
     data[i * 4 + 2] += offset; // Blue channel
   }
 
+  ctx.putImageData(imageData, 0, 0);
+}
+
+export function applySharp(canvas: HTMLCanvasElement, intensity: number) {
+  const ctx = canvas.getContext('2d');
+
+  if(!ctx) return;
+
+  const width = canvas.width;
+  const height = canvas.height;
+
+  // Get the image data from the canvas
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  // Sharpen kernel (modified for stronger effect)
+  const sharpenKernel = [
+    0, -1, 0,
+    -1,  5, -1,
+    0, -1, 0
+  ];
+
+  // Create a copy of the image data to avoid modifying the original while processing
+  const output = new Uint8ClampedArray(data);
+
+  // Adjust intensity to be between 0 and 1
+  const adjustedIntensity = intensity * 3; // Double the intensity for more effect
+
+  // Helper function to get pixel index
+  const getIndex = (x: number, y: number) => (y * width + x) * 4;
+
+  // Apply kernel function
+  const applyKernel = (x: number, y: number) => {
+    let r = 0, g = 0, b = 0;
+    let offset = 0;
+
+    for(let ky = -1; ky <= 1; ky++) {
+      for(let kx = -1; kx <= 1; kx++) {
+        const px = x + kx;
+        const py = y + ky;
+
+        if(px >= 0 && px < width && py >= 0 && py < height) {
+          const idx = getIndex(px, py);
+          r += data[idx] * sharpenKernel[offset];
+          g += data[idx + 1] * sharpenKernel[offset];
+          b += data[idx + 2] * sharpenKernel[offset];
+        }
+        offset++;
+      }
+    }
+
+    const idx = getIndex(x, y);
+    output[idx] = Math.min(255, Math.max(0, data[idx] + (r - data[idx]) * adjustedIntensity));
+    output[idx + 1] = Math.min(255, Math.max(0, data[idx + 1] + (g - data[idx + 1]) * adjustedIntensity));
+    output[idx + 2] = Math.min(255, Math.max(0, data[idx + 2] + (b - data[idx + 2]) * adjustedIntensity));
+  };
+
+  // Loop through each pixel
+  for(let y = 0; y < height; y++) {
+    for(let x = 0; x < width; x++) {
+      applyKernel(x, y);
+    }
+  }
+
+  // Update the image data with the sharpened data
+  for(let i = 0; i < data.length; i++) {
+    data[i] = output[i];
+  }
+
+  // Put the modified image data back onto the canvas
   ctx.putImageData(imageData, 0, 0);
 }
