@@ -427,7 +427,7 @@ export const Crop = (props: CropPops) => {
         </div>
       </div>
 
-      {/* <div class={styles.MediaEditorCropBarContainer}>
+      <div class={styles.MediaEditorCropBarContainer}>
         <ButtonIconTsx icon='rotate' class={styles.MediaEditorCropBar}/>
         <div class={styles.MediaEditorCropBarDegreesBar}>
           <div class={styles.MediaEditorCropBarDegrees}>
@@ -439,9 +439,11 @@ export const Crop = (props: CropPops) => {
               )
             })}
           </div>
+
+          <div class={styles.MediaEditorCropBarDegreesTicks}></div>
         </div>
         <ButtonIconTsx icon='media_editor_flip' class={styles.MediaEditorCropBar}/>
-      </div> */}
+      </div>
     </div>
   )
 }
