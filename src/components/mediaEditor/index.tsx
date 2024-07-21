@@ -1,7 +1,7 @@
 import {Portal} from 'solid-js/web';
 import {createStore, unwrap} from 'solid-js/store';
 import {ChatType} from '../chat/chat';
-import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps} from 'solid-js';
+import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps, onCleanup} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import {RangeSelectorTsx} from '../rangeSelectorTsx';
 import RowTsx from '../rowTsx';
@@ -14,6 +14,7 @@ import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
 import png from './main-canvas-big.png';
+// import png from './small.png';
 import debounce from '../../helpers/schedulers/debounce';
 import {useAppState} from '../../stores/appState';
 import {
@@ -359,7 +360,9 @@ export const MediaEditor = () => {
     ]
   }
 
+  const [originalImage, setOriginalImage] = createSignal();
   const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
+  const [previewDimensions, setPreviewDimensions] = createSignal<any>();
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
 
   const handleTabClick = (tab: MediaEditorTab) => {
@@ -567,6 +570,41 @@ export const MediaEditor = () => {
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
   const [cropAspectRatio, setCropAspectRatio] = createSignal<CropAspectRatio>('Free');
 
+  // * Resize management
+  // unfortunately relying on auto-scaling won't work for us, to save some time for contest, let's adjust working area manually
+  // cause by spec on resize canvas would be reset and having black background 🙈
+  const handleWindowResize = debounce(() => {
+    if(originalImage()) {
+      // Save the current state of the canvas
+      const filterLayerData = filterLayerCanvas.getContext('2d').getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+      const drawingLayerData = drawingLayerCanvas.getContext('2d').getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+
+      // Calculate new dimensions
+      const dimensions = getScaledImageSize(previewRef, originalImage());
+
+      // Update the preview element's dimensions
+      previewRef.style.width = `${dimensions.width}px`;
+      previewRef.style.height = `${dimensions.height}px`;
+
+      // Update state for preview dimensions
+      setPreviewDimensions({width: dimensions.width, height: dimensions.height});
+
+      // Update canvas dimensions
+      filterLayerCanvas.width = dimensions.width;
+      filterLayerCanvas.height = dimensions.height;
+
+      drawingLayerCanvas.width = dimensions.width;
+      drawingLayerCanvas.height = dimensions.height;
+
+      // Restore the saved state
+      const filterLayerCtx = filterLayerCanvas.getContext('2d');
+      filterLayerCtx.putImageData(filterLayerData, 0, 0);
+
+      const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
+      drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
+    }
+  }, 300);
+
   // * On Mount
   onMount(() => {
     const image = new Image();
@@ -577,6 +615,7 @@ export const MediaEditor = () => {
       previewRef.style.width = `${dimensions.width}px`;
       previewRef.style.height = `${dimensions.height}px`;
 
+      setPreviewDimensions({width: dimensions.width, height: dimensions.height});
       filterLayerCanvas.width = dimensions.width;
       filterLayerCanvas.height = dimensions.height;
 
@@ -588,12 +627,10 @@ export const MediaEditor = () => {
 
       const drawingCtx = drawingLayerCanvas.getContext('2d');
       drawingCtx.fillStyle = 'blue';
-      drawingCtx.fillRect(0, 0, 400, 800);
+      drawingCtx.fillRect(0, 0, 100, 200);
 
       DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewRef);
       DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
-
-      console.log(rootScope.managers, 'rootScope.managers', rootScope.managers.apiFileManager);
 
       appDownloadManager.construct(rootScope.managers);
 
@@ -607,61 +644,34 @@ export const MediaEditor = () => {
       // });
 
       // stickerTabRef.appendChild(stickers);
+
+      setOriginalImage(image);
     });
 
     image.src = png;
+
+    window.addEventListener('resize', handleWindowResize);
   });
+
+  onCleanup(() => {
+    window.removeEventListener('resize', handleWindowResize);
+  });
+
+  createEffect(on(activeTab, () => {
+    if(previewDimensions()) {
+      console.log('previewDimensions(): ', previewDimensions());
+
+      previewRef.style.width = `${previewDimensions().width}px`;
+      previewRef.style.height = `${previewDimensions().height}px`;
+    }
+  }));
 
   return (
     <div class={styles.MediaEditor}>
       <div class={styles.MediaEditorContainer}>
         <div class={styles.MediaEditorPreview}>
-          {activeTab() !== 'crop' && (
-            <div class={styles.MediaEditorPreviewContent} ref={previewRef}>
-              <For each={state.entities}>
-                {(entity) => {
-                  return (
-                    <TransformableEntity
-                      previewRef={previewRef}
-                      id={entity.id}
-                      x={entity.x}
-                      y={entity.y}
-                      width={entity.width}
-                      height={entity.height}
-                      isSelected={entity.id === state.selectedEntityId}
-                      onMove={({x, y}) => {
-                        if(entity.id !== state.selectedEntityId) {
-                          selectEntity(entity.id);
-                        }
-
-                        setState('entities', entity.id, {x, y});
-                      }}
-                      controls={[
-                        <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
-                      ]}
-                    >
-                      {isTextEntity(entity) ? (
-                        <TextEntity {...entity} />
-                      ) : (
-                        <StickerEntity {...entity} />
-                      )}
-                    </TransformableEntity>
-                  )
-                }}
-              </For>
-
-              <canvas
-                ref={drawingLayerCanvas}
-                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)}
-              />
-              <canvas
-                ref={filterLayerCanvas}
-                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
-              />
-            </div>
-          )}
-
-          {/* <div class={styles.MediaEditorPreviewContent} ref={previewRef}>
+          {/* {activeTab() !== 'crop' && ( */}
+          <div class={styles.MediaEditorPreviewContent} ref={previewRef} style={{display: activeTab() === 'crop' ? 'none' : 'initial'}}>
             <For each={state.entities}>
               {(entity) => {
                 return (
@@ -685,10 +695,10 @@ export const MediaEditor = () => {
                     ]}
                   >
                     {isTextEntity(entity) ? (
-                      <TextEntity {...entity} />
-                    ) : (
-                      <StickerEntity {...entity} />
-                    )}
+                        <TextEntity {...entity} />
+                      ) : (
+                        <StickerEntity {...entity} />
+                      )}
                   </TransformableEntity>
                 )
               }}
@@ -702,14 +712,18 @@ export const MediaEditor = () => {
               ref={filterLayerCanvas}
               class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
             />
-          </div> */}
+          </div>
+          {/* )} */}
 
           {activeTab() === 'crop' && (
-            <Crop
-              image={cropPreview()}
-              aspectRatio={cropAspectRatio()}
-              onCrop={() => alert('crop happened')}
-            />
+            <h1>CROP</h1>
+            // <div class={styles.MediaEditorCropContent} ref={previewRef}>
+            //   <Crop
+            //     image={cropPreview()}
+            //     aspectRatio={cropAspectRatio()}
+            //     onCrop={() => alert('crop happened')}
+            //   />
+            // </div>
           )}
         </div>
 
