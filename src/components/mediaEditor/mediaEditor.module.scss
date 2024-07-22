@@ -9,7 +9,11 @@
 
 .MediaEditor {
   --sidebar-width: 400px;
-  --preview-width: calc(100% - var(--sidebar-width));
+  /*
+   * https://www.figma.com/design/LijGC00oBbtaPTV55KxpGG/WebK-Part-2?node-id=0-1&t=QQRsPhByVyCPgKyK-0
+   * we add some empty black space from both sides width this property
+   * one side is 15%, so we subtract 30% from default width of preview
+   */
 
   position: fixed;
   top: 0;
@@ -18,15 +22,31 @@
   left: 0;
   z-index: 4;
 
+  &Container {
+    z-index: 1;
+    position: relative;
+    height: 100%;
+    display: grid;
+    grid-template-columns: calc(100vw - var(--sidebar-width)) var(--sidebar-width);
+    background-color: #000000;
+  }
+
   &Preview {
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    width: var(--preview-width);
-    flex-grow: 1;
-    background-color: #000000;
+    padding-left: 10vw;
+    padding-right: 10vw;
+
+    &Inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
     &Content {
       width: 100%;
@@ -62,13 +82,6 @@
     :global(html.night) & {
       background-color: rgba(var(--body-background-color-rgb), .9);
     }
-  }
-
-  &Container {
-    z-index: 1;
-    position: relative;
-    height: 100%;
-    display: flex;
   }
 
   &Sidebar {

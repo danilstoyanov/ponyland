@@ -14,7 +14,9 @@ import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
 // import png from './main-canvas.png';
-import png from './sonic.jpg';
+import png from './with_footer.png';
+
+// import png from './sonic.jpg';
 // import png from './small.png';
 import debounce from '../../helpers/schedulers/debounce';
 import {useAppState} from '../../stores/appState';
@@ -666,15 +668,21 @@ export const MediaEditor = () => {
 
   // * On Mount
   onMount(() => {
+    console.log('previewRef.clientWidth: ', previewRef.clientWidth);
+    console.log('previewRef.clientHeight: ', previewRef.clientHeight);
+
     const image = new Image();
 
-    image.addEventListener('load', async() => {
+    image.addEventListener('load', () => {
       const dimensions = getScaledImageSize(previewRef, image);
+
+      console.log('dimensions: ', dimensions, image, previewRef);
 
       previewRef.style.width = `${dimensions.width}px`;
       previewRef.style.height = `${dimensions.height}px`;
 
       setPreviewDimensions({width: dimensions.width, height: dimensions.height});
+
       filterLayerCanvas.width = dimensions.width;
       filterLayerCanvas.height = dimensions.height;
 
@@ -729,58 +737,64 @@ export const MediaEditor = () => {
     <div class={styles.MediaEditor}>
       <div class={styles.MediaEditorContainer}>
         <div class={styles.MediaEditorPreview}>
-          <div class={styles.MediaEditorPreviewContent} ref={previewRef} style={{display: activeTab() === 'crop' ? 'none' : 'initial'}}>
-            <For each={state.entities}>
-              {(entity) => {
-                return (
-                  <TransformableEntity
-                    previewRef={previewRef}
-                    id={entity.id}
-                    x={entity.x}
-                    y={entity.y}
-                    width={entity.width}
-                    height={entity.height}
-                    isSelected={entity.id === state.selectedEntityId}
-                    onMove={({x, y}) => {
-                      if(entity.id !== state.selectedEntityId) {
-                        selectEntity(entity.id);
-                      }
+          <div class={styles.MediaEditorPreviewInner}>
+            <div
+              style={{display: activeTab() === 'crop' ? 'none' : 'inherit'}}
+              class={styles.MediaEditorPreviewContent}
+              ref={previewRef}
+            >
+              <For each={state.entities}>
+                {(entity) => {
+                  return (
+                    <TransformableEntity
+                      previewRef={previewRef}
+                      id={entity.id}
+                      x={entity.x}
+                      y={entity.y}
+                      width={entity.width}
+                      height={entity.height}
+                      isSelected={entity.id === state.selectedEntityId}
+                      onMove={({x, y}) => {
+                        if(entity.id !== state.selectedEntityId) {
+                          selectEntity(entity.id);
+                        }
 
-                      setState('entities', entity.id, {x, y});
-                    }}
-                    controls={[
-                      <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
-                    ]}
-                  >
-                    {isTextEntity(entity) ? (
-                      <TextEntity {...entity} />
-                    ) : (
-                      <StickerEntity {...entity} />
-                    )}
-                  </TransformableEntity>
-                )
-              }}
-            </For>
+                        setState('entities', entity.id, {x, y});
+                      }}
+                      controls={[
+                        <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
+                      ]}
+                    >
+                      {isTextEntity(entity) ? (
+                        <TextEntity {...entity} />
+                      ) : (
+                        <StickerEntity {...entity} />
+                      )}
+                    </TransformableEntity>
+                  )
+                }}
+              </For>
 
-            <canvas
-              ref={drawingLayerCanvas}
-              class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)}
-            />
-            <canvas
-              ref={filterLayerCanvas}
-              class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
-            />
-          </div>
-
-          {activeTab() === 'crop' && (
-            <div class={styles.MediaEditorCropContent} ref={previewRef}>
-              <Crop
-                image={cropPreview()}
-                aspectRatio={cropAspectRatio()}
-                onCrop={() => alert('crop happened')}
+              <canvas
+                ref={drawingLayerCanvas}
+                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)}
+              />
+              <canvas
+                ref={filterLayerCanvas}
+                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
               />
             </div>
-          )}
+
+            {activeTab() === 'crop' && (
+              <div class={styles.MediaEditorCropContent} ref={previewRef}>
+                <Crop
+                  image={cropPreview()}
+                  aspectRatio={cropAspectRatio()}
+                  onCrop={() => alert('crop happened')}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         <div class={styles.MediaEditorSidebar}>
