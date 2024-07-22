@@ -600,6 +600,7 @@
     position: relative;
     font-size: 12px;
     color: #717579;
+    transition: transform 0.2s;
   }
 
   &CropBarDegree:global(.active) {

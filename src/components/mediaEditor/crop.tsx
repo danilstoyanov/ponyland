@@ -82,12 +82,12 @@ const CropBar = (props: Partial<CropBarProps>) => {
     });
 
     const angle = currentAngle();
-    if(Math.abs(angle) % 15 === 0) {
-      const activeElement = degreeBarRef.querySelector(`[data-degree="${angle}"]`);
-      if(activeElement) {
-        activeElement.classList.add('active');
+    degreeElements.forEach(element => {
+      const elementDegree = parseInt(element.getAttribute('data-degree')!, 10);
+      if(Math.abs(elementDegree - angle) <= 2) {
+        element.classList.add('active');
       }
-    }
+    });
   };
 
   const onMouseDown = (event: MouseEvent) => {
