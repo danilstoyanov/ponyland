@@ -1,4 +1,4 @@
-import {createEffect, createSignal, onCleanup, onMount} from 'solid-js';
+import {createEffect, createSignal, JSX, onCleanup, onMount} from 'solid-js';
 import {ButtonIconTsx} from '../buttonIconTsx'
 import styles from './mediaEditor.module.scss'
 
@@ -29,6 +29,139 @@ interface CropPops {
   onCrop: () => void;
 }
 
+type CropBarProps = {
+  leftControl?: JSX.Element;
+  rightControl?: JSX.Element;
+  onChange: any;
+};
+
+const CropBar = (props: Partial<CropBarProps>) => {
+  let degreeBarRef: HTMLDivElement;
+  let anchorPointRef: HTMLDivElement;
+
+  function generateDegreesArray() {
+    const originalStart = -180;
+    const originalEnd = 180;
+    const expansion = 15;
+    const step = 15;
+
+    const start = originalStart - expansion;
+    const end = originalEnd + expansion;
+    const degreesArray = [];
+
+    for(let i = start; i <= end; i += step) {
+      degreesArray.push(i);
+    }
+
+    return degreesArray;
+  }
+
+  const degrees = generateDegreesArray();
+
+  const [dragging, setDragging] = createSignal(false);
+  const [initialScrollLeft, setInitialScrollLeft] = createSignal(0);
+  const [initialMouseX, setInitialMouseX] = createSignal(0);
+  const [currentAngle, setCurrentAngle] = createSignal(0.0);
+
+  const updateCurrentAngle = () => {
+    const scrollWidth = degreeBarRef.scrollWidth;
+    const clientWidth = degreeBarRef.clientWidth;
+    const maxScrollLeft = scrollWidth - clientWidth;
+    const ratio = degreeBarRef.scrollLeft / maxScrollLeft;
+    const angleRange = 180; // Full range from -90 to 90
+    const angle = (ratio * angleRange) - 90;
+    setCurrentAngle(Math.round(angle));
+
+    updateActiveDegree();
+  };
+
+  const updateActiveDegree = () => {
+    const degreeElements = degreeBarRef.querySelectorAll('[data-degree]');
+    degreeElements.forEach(element => {
+      element.classList.remove('active');
+    });
+
+    const angle = currentAngle();
+    if(Math.abs(angle) % 15 === 0) {
+      const activeElement = degreeBarRef.querySelector(`[data-degree="${angle}"]`);
+      if(activeElement) {
+        activeElement.classList.add('active');
+      }
+    }
+  };
+
+  const onMouseDown = (event: MouseEvent) => {
+    setDragging(true);
+    setInitialMouseX(event.clientX);
+    setInitialScrollLeft(degreeBarRef.scrollLeft);
+
+    const onMouseMove = (event: MouseEvent) => {
+      if(!dragging()) return;
+
+      const deltaX = event.clientX - initialMouseX();
+      degreeBarRef.scrollLeft = initialScrollLeft() - deltaX;
+      updateCurrentAngle(); // Update the current angle while dragging
+    };
+
+    const onMouseUp = () => {
+      setDragging(false);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      updateCurrentAngle(); // Ensure the current angle is updated after dragging stops
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  onMount(() => {
+    setTimeout(() => {
+      if(degreeBarRef) {
+        const scrollWidth = degreeBarRef.scrollWidth;
+        const clientWidth = degreeBarRef.clientWidth;
+        const scrollPosition = (scrollWidth - clientWidth) / 2;
+
+        degreeBarRef.scrollLeft = scrollPosition;
+        updateCurrentAngle(); // Set initial current angle
+
+        const defaultActiveElement = degreeBarRef.querySelector('[data-degree="0"]');
+        if(defaultActiveElement) {
+          defaultActiveElement.classList.add('active');
+        }
+      }
+    });
+  });
+
+  createEffect(() => {
+    if(props.onChange) {
+      props.onChange(currentAngle());
+    }
+  });
+
+  return (
+    <div class={styles.MediaEditorCropBarContainer}>
+      <ButtonIconTsx icon="rotate" class={styles.MediaEditorCropBar} />
+      <div class={styles.MediaEditorCropBarDegreesBar}>
+        <div
+          ref={el => degreeBarRef = el!}
+          class={styles.MediaEditorCropBarDegrees}
+          onMouseDown={onMouseDown}
+        >
+          {degrees.map((degree, idx) => (
+            <div class={styles.MediaEditorCropBarDegree} data-degree={degree}>
+              {degree}
+            </div>
+          ))}
+        </div>
+
+        <div class={styles.MediaEditorCropBarDegreesCurrentTick} ref={anchorPointRef}></div>
+      </div>
+      <ButtonIconTsx icon="media_editor_flip" class={styles.MediaEditorCropBar} />
+    </div>
+  );
+};
+
+
 export const Crop = (props: CropPops) => {
   let containerRef: HTMLDivElement;
   let containerWrapperRef: HTMLDivElement;
@@ -47,21 +180,6 @@ export const Crop = (props: CropPops) => {
     container_left: number,
     container_top: number
   }> = {};
-
-  function generateDegreesArray() {
-    const start = -180;
-    const end = 180;
-    const step = 15;
-    const degreesArray = [];
-
-    for(let i = start; i <= end; i += step) {
-      degreesArray.push(i);
-    }
-
-    return degreesArray;
-  };
-
-  const degrees = generateDegreesArray();
 
   function addHandlers() {
     containerRef.addEventListener('mousedown', startMoving, false);
@@ -427,23 +545,7 @@ export const Crop = (props: CropPops) => {
         </div>
       </div>
 
-      <div class={styles.MediaEditorCropBarContainer}>
-        <ButtonIconTsx icon='rotate' class={styles.MediaEditorCropBar}/>
-        <div class={styles.MediaEditorCropBarDegreesBar}>
-          <div class={styles.MediaEditorCropBarDegrees}>
-            {degrees.map(degree => {
-              return (
-                <div>
-                  {degree}
-                </div>
-              )
-            })}
-          </div>
-
-          <div class={styles.MediaEditorCropBarDegreesTicks}></div>
-        </div>
-        <ButtonIconTsx icon='media_editor_flip' class={styles.MediaEditorCropBar}/>
-      </div>
+      <CropBar />
     </div>
   )
 }

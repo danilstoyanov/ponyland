@@ -380,7 +380,7 @@ export const MediaEditor = () => {
   };
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('crop');
   const [previewDimensions, setPreviewDimensions] = createSignal<any>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);

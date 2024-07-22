@@ -551,10 +551,16 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     width: 600px;
+
+    &:hover {
+      cursor: grab;
+    }
 
     &::before {
       content: '';
+      z-index: 1;
       position: absolute;
       top: 0;
       left: 0;
@@ -565,6 +571,7 @@
 
     &::after {
       content: '';
+      z-index: 1;
       position: absolute;
       top: 0;
       right: 0;
@@ -576,24 +583,41 @@
 
   &CropBarDegrees {
     display: flex;
-    justify-content: center;
     gap: 18px;
-    width: calc(600px - 80px);
-    overflow: hidden;
-
-    > div {
-      flex-shrink: 0;
-      height: 24px;
-      width: 24px;
-      display: flex;
-      justify-content: center;
-    }
+    height: 40px;
+    background-image: url('data:image/svg+xml,%3Csvg%20width%3D%2242%22%20height%3D%222%22%20viewBox%3D%220%200%2042%202%22%20fill%3D%22none%22%20xmlns%3D%22http://www.w3.org/2000/svg%22%3E%3Ccircle%20cx%3D%221%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.5%22/%3E%3Ccircle%20cx%3D%227%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.2%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.2%22/%3E%3Ccircle%20cx%3D%2219%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.2%22/%3E%3Ccircle%20cx%3D%2225%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.2%22/%3E%3Ccircle%20cx%3D%2231%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.2%22/%3E%3Ccircle%20cx%3D%2237%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220.2%22/%3E%3Ccircle%20cx%3D%2243%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220%22/%3E%3Ccircle%20cx%3D%2249%22%20cy%3D%221%22%20r%3D%221%22%20fill%3D%22white%22%20fill-opacity%3D%220%22/%3E%3C/svg%3E');
+    background-repeat: repeat-x;
+    background-position-x: 4px;
+    background-position-y: bottom;
+    overflow-x: hidden;
   }
 
-  &CropBarDegreesTicks {
-    height: 16px;
-    width: 100%;
-    background: pink;
+  &CropBarDegree {
+    flex-shrink: 0;
+    width: 24px;
+    display: flex;
+    justify-content: center;
+    position: relative;
+    font-size: 12px;
+    color: #717579;
+  }
+
+  &CropBarDegree:global(.active) {
+    font-size: 16px;
+    font-weight: 500;
+    color: #fff;
+    transform: translateY(-4px);
+  }
+
+  &CropBarDegreesCurrentTick {
+    width: 8px;
+    height: 4px;
+    position: absolute;
+    bottom: 12px;
+    left: calc(50% - 4px);
+    background-image: url("data:image/svg+xml,%3Csvg width='6' height='4' viewBox='0 0 6 4' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.29289 0.707106L0.28033 2.71967C-0.192143 3.19214 0.142482 4 0.81066 4H5.18934C5.85752 4 6.19214 3.19214 5.71967 2.71967L3.70711 0.707107C3.31658 0.316583 2.68342 0.316582 2.29289 0.707106Z' fill='white'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
   }
 };
 
