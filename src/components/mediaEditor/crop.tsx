@@ -161,12 +161,12 @@ const CropBar = (props: Partial<CropBarProps>) => {
   );
 };
 
-
 export const Crop = (props: CropPops) => {
   let containerRef: HTMLDivElement;
   let containerWrapperRef: HTMLDivElement;
   let cropImageRef: HTMLImageElement;
   let overlayImageRef: HTMLImageElement;
+  let cropWorkAreaRef: HTMLImageElement;
 
   let scaledRatio = 0;
   let CROPWIDTH = 200;
@@ -491,9 +491,23 @@ export const Crop = (props: CropPops) => {
     });
   };
 
+  const handleRotatioAngleUpdate = (value: number) => {
+    const theta = value * (Math.PI / 180);
+    const absTheta = Math.abs(theta);
+
+    const width = cropImageRef.offsetWidth;
+    const height = cropImageRef.offsetHeight;
+
+    // Stackoverflow
+    const scalingFactor = Math.cos(absTheta) + Math.max(width / height, height / width) * Math.sin(absTheta);
+
+    overlayImageRef.style.transform = `rotate(${value}deg) scale(${scalingFactor})`;
+    cropImageRef.style.transform = `rotate(${value}deg) scale(${scalingFactor})`;
+  }
+
   return (
     <div class={styles.MediaEditorCrop}>
-      <div class={styles.MediaEditorCropWorkArea}>
+      <div class={styles.MediaEditorCropWorkArea} ref={cropWorkAreaRef}>
         <div class="crop-component">
           <div class="crop-overlay-wrapper">
             <div class="crop-overlay" ref={containerRef}>
@@ -545,7 +559,7 @@ export const Crop = (props: CropPops) => {
         </div>
       </div>
 
-      <CropBar />
+      <CropBar onChange={handleRotatioAngleUpdate} />
     </div>
   )
 }

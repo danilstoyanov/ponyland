@@ -13,7 +13,8 @@ import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
-import png from './main-canvas.png';
+// import png from './main-canvas.png';
+import png from './sonic.jpg';
 // import png from './small.png';
 import debounce from '../../helpers/schedulers/debounce';
 import {useAppState} from '../../stores/appState';
@@ -380,7 +381,7 @@ export const MediaEditor = () => {
   };
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('crop');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
   const [previewDimensions, setPreviewDimensions] = createSignal<any>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
