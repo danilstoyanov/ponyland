@@ -112,6 +112,29 @@ export interface MediaEditorCropState {
   aspectRatio: CropAspectRatio;
 }
 
+const createRandomColorImage = () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+
+  const ctx = canvas.getContext('2d');
+
+  // Generate a random color
+  const r = Math.floor(Math.random() * 256);
+  const g = Math.floor(Math.random() * 256);
+  const b = Math.floor(Math.random() * 256);
+
+  // Set the fill color and fill the canvas
+  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+  ctx.fillRect(0, 0, 128, 128);
+
+  // Create a new image
+  const img = new Image(128, 128);
+  img.src = canvas.toDataURL();
+
+  return img;
+}
+
 const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
   const [local, others] = splitProps(props, ['label']);
   const [currentValue, setCurrentValue] = createSignal(props.value);
@@ -259,6 +282,10 @@ type MediaEditorStateType = {
   tools: MediaEditorTool[];
   entities: Array<TextEntityType | StickerEntityType>;
   crop: MediaEditorCropState;
+  workarea: {
+    contentPreviewOriginalHeight: number;
+    contentPreviewOriginalWidth: number;
+  }
 };
 
 type MediaEditorFilter = {
@@ -284,31 +311,6 @@ export const MediaEditor = () => {
   let filterLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
   let DrawingManagerInstance: DrawingManager;
-
-  function createRandomColorImage() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
-
-    const ctx = canvas.getContext('2d');
-
-    // Generate a random color
-    const r = Math.floor(Math.random() * 256);
-    const g = Math.floor(Math.random() * 256);
-    const b = Math.floor(Math.random() * 256);
-
-    // Set the fill color and fill the canvas
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    ctx.fillRect(0, 0, 128, 128);
-
-    // Create a new image
-    const img = new Image(128, 128);
-    img.src = canvas.toDataURL();
-
-    return img;
-  }
-
-  const randomColorImage = createRandomColorImage();
 
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
@@ -412,7 +414,12 @@ export const MediaEditor = () => {
       isFlipped: false,
       isApplied: false,
       aspectRatio: 'Free'
+    },
+    workarea: {
+      contentPreviewOriginalHeight: 0,
+      contentPreviewOriginalWidth: 0
     }
+    // workarea: {}
   }
 
   const initialFilterState: MediaEditorFilterState = {
@@ -425,10 +432,7 @@ export const MediaEditor = () => {
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
 
   const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
-  const [preview, setPreview] = createSignal<string>();
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
-
-  // const [cropAspectRatio, setCropAspectRatio] = createSignal<CropAspectRatio>('Free');
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
   const [filterState, setFilterState] = createStore<MediaEditorFilterState>(initialFilterState);
@@ -437,7 +441,44 @@ export const MediaEditor = () => {
     setActiveTab(tab);
   };
 
-  function scaleCropToOriginalImage(crop: MediaEditorCropState, originalImage: HTMLImageElement) {
+  function getScaledImageSize(ref: HTMLDivElement, {imageWidth, imageHeight}: {imageWidth: number, imageHeight: number}) {
+    const workareaPadding = (window.innerWidth * 0.2);
+    const previewWidth = ref.clientWidth - workareaPadding;
+    const previewHeight = ref.clientHeight;
+
+    // Natural dimensions of the original image
+    // ВСЕГДА НАТУРАЛЬНАЯ ШИРИНА / ВЫСОТА
+    // const originalWidth = originalImageRef.naturalWidth;
+    // const originalHeight = originalImageRef.naturalHeight;
+
+    const originalWidth = imageWidth;
+    const originalHeight = imageHeight;
+
+    // Calculate the scaling ratio to fit the width
+    const widthRatio = previewWidth / originalWidth;
+    const newWidth = previewWidth;
+    const newHeight = originalHeight * widthRatio;
+
+    // Check if the new height fits within the preview area
+    if(newHeight > previewHeight) {
+      // If the height exceeds the preview height, scale down to fit the height
+      const heightRatio = previewHeight / originalHeight;
+      const newWidth = originalWidth * heightRatio;
+      const newHeight = previewHeight;
+
+      return {
+        width: newWidth,
+        height: newHeight
+      };
+    }
+
+    return {
+      width: newWidth,
+      height: newHeight
+    };
+  };
+
+  function scaleCropToOriginalImage(crop: MediaEditorCropState, {imageWidth, imageHeight}: {imageWidth: number, imageHeight: number}) {
     const {
       x,
       y,
@@ -447,8 +488,8 @@ export const MediaEditor = () => {
       workareaWidth
     } = crop;
 
-    const originalImageWidth = originalImage.naturalWidth;
-    const originalImageHeight = originalImage.naturalHeight;
+    const originalImageWidth = imageWidth;
+    const originalImageHeight = imageHeight;
 
     // Вычисляем масштабные коэффициенты для ширины и высоты
     const scaleX = originalImageWidth / workareaWidth;
@@ -466,11 +507,14 @@ export const MediaEditor = () => {
       width: scaledWidth,
       height: scaledHeight
     };
-  }
+  };
 
   // * Crop Application
   const applyCrop = () => {
-    const {x, y, width, height} = scaleCropToOriginalImage(state.crop, originalImage());
+    const {x, y, width, height} = scaleCropToOriginalImage(state.crop, {
+      imageHeight: originalImage().height,
+      imageWidth: originalImage().width
+    });
 
     const filterLayerCtx = filterLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
@@ -478,24 +522,28 @@ export const MediaEditor = () => {
     // Save the current state of the drawing layer
     const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
 
-    // Get scaled image size
-    const dimensions = getScaledImageSize(previewContentRef, originalImage());
+    const dimensions = getScaledImageSize(previewRef, {
+      imageHeight: originalImage().naturalHeight,
+      imageWidth: originalImage().naturalWidth
+    });
+
+    setWorkareaDimensions(dimensions);
 
     // Update canvas dimensions
     filterLayerCanvas.width = dimensions.width;
     filterLayerCanvas.height = dimensions.height;
     drawingLayerCanvas.width = dimensions.width;
     drawingLayerCanvas.height = dimensions.height;
-
-    setWorkareaDimensions(dimensions);
+    previewContentRef.style.width = `${dimensions.width}px`;
+    previewContentRef.style.height = `${dimensions.height}px`;
 
     // Clear and redraw the filter layer with the cropped image, adjusted for scaling
     if(filterLayerCtx) {
       filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
       filterLayerCtx.drawImage(
         originalImage(),
-        x, y, width, height,  // Source rectangle
-        0, 0, dimensions.width, dimensions.height   // Destination rectangle
+        x, y, width, height, // Source rectangle
+        0, 0, dimensions.width, dimensions.height // Destination rectangle
       );
     }
 
@@ -504,13 +552,7 @@ export const MediaEditor = () => {
       drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
       drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
     }
-
-    previewContentRef.style.width = `${dimensions.width}px`;
-    previewContentRef.style.height = `${dimensions.height}px`;
-
-    debugger;
   };
-
 
   const onCropChange = (crop: MediaEditorCropState) => {
     setState('crop', prevState => ({
@@ -590,7 +632,6 @@ export const MediaEditor = () => {
   // * Tab Handlers
   const handleCropTabToggle = async() => {
     const preview = await renderMedia() as string;
-    setPreview(preview);
 
     const img = new Image();
     img.src = preview;
@@ -623,7 +664,12 @@ export const MediaEditor = () => {
   const handleFilterUpdate = (type: FilterType) => {
     return throttle(async(value: number) => {
       const ctx = filterLayerCanvas.getContext('2d');
-      const dimensions = getScaledImageSize(previewRef, originalImage());
+
+      const dimensions = getScaledImageSize(previewRef, {
+        imageHeight: originalImage().naturalHeight,
+        imageWidth: originalImage().naturalWidth
+      });
+
       ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
 
       setFilterState('appliedFilters', (filters) => {
@@ -735,41 +781,7 @@ export const MediaEditor = () => {
     setState('entities', state.selectedEntityId, {textAlign})
   };
 
-  function getScaledImageSize(ref: HTMLDivElement, originalImageRef: HTMLImageElement) {
-    const workareaPadding = (window.innerWidth * 0.2);
-    const previewWidth = ref.clientWidth - workareaPadding;
-    const previewHeight = ref.clientHeight;
-
-    // Natural dimensions of the original image
-    const originalWidth = originalImageRef.naturalWidth;
-    const originalHeight = originalImageRef.naturalHeight;
-
-    // Calculate the scaling ratio to fit the width
-    const widthRatio = previewWidth / originalWidth;
-    const newWidth = previewWidth;
-    const newHeight = originalHeight * widthRatio;
-
-    // Check if the new height fits within the preview area
-    if(newHeight > previewHeight) {
-      // If the height exceeds the preview height, scale down to fit the height
-      const heightRatio = previewHeight / originalHeight;
-      const newWidth = originalWidth * heightRatio;
-      const newHeight = previewHeight;
-
-      return {
-        width: newWidth,
-        height: newHeight
-      };
-    }
-
-    return {
-      width: newWidth,
-      height: newHeight
-    };
-  };
-
   // * Resize management
-  // Unfortunately, canvas
   const handleWindowResize = debounce(() => {
     const filterLayerCtx = filterLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
@@ -782,7 +794,10 @@ export const MediaEditor = () => {
     //   filterLayerData = filterLayerCtx.getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
     // }
 
-    const dimensions = getScaledImageSize(previewRef, originalImage());
+    const dimensions = getScaledImageSize(previewRef, {
+      imageHeight: originalImage().naturalHeight,
+      imageWidth: originalImage().naturalWidth
+    });
 
     previewContentRef.style.width = `${dimensions.width}px`;
     previewContentRef.style.height = `${dimensions.height}px`;
@@ -810,20 +825,14 @@ export const MediaEditor = () => {
 
   // * On Mount
   onMount(() => {
-    // img_200x200_1_1
-    // img_320x200_8_5
-    // img_3840x2160_8_4
-    // img_3840x3840_1_1
-    // main_canvas_png
-    // img_crop_debugger
-
     const png = img_crop_debugger;
     const image = new Image();
 
     image.addEventListener('load', () => {
-      const dimensions = getScaledImageSize(previewRef, image);
-
-      console.log('dimensions: ', dimensions, image, previewContentRef);
+      const dimensions = getScaledImageSize(previewRef, {
+        imageHeight: image.naturalHeight,
+        imageWidth: image.naturalWidth
+      });
 
       previewContentRef.style.width = `${dimensions.width}px`;
       previewContentRef.style.height = `${dimensions.height}px`;
@@ -839,27 +848,20 @@ export const MediaEditor = () => {
       const ctx = filterLayerCanvas.getContext('2d');
       ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
 
-      // const drawingCtx = drawingLayerCanvas.getContext('2d');
-      // drawingCtx.fillStyle = 'blue';
-      // drawingCtx.fillRect(0, 0, 100, 200);
-
       DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
       DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
 
-      appDownloadManager.construct(rootScope.managers);
-
+      // appDownloadManager.construct(rootScope.managers);
       // const stickers = new StickersTab(rootScope.managers);
       // stickers.init();
-
       // const stickers = EmoticonsDropdown.getElement();
-
       // EmoticonsDropdown.init((target: any) => {
       //   addStickerEntity(target);
       // });
-
       // stickerTabRef.appendChild(stickers);
 
       setOriginalImage(image);
+
       // originalImageBitMap, setOriginalImageBitMap
     });
 
@@ -909,7 +911,7 @@ export const MediaEditor = () => {
       </div>
 
       <div class={styles.MediaEditorContainer}>
-        <div class={styles.MediaEditorPreview} ref={previewRef}>
+        <div id="previewRef" class={styles.MediaEditorPreview} ref={previewRef}>
           <div class={styles.MediaEditorInnerPreview}>
             <div
               id="previewContentRef"
@@ -962,13 +964,13 @@ export const MediaEditor = () => {
           </div>
 
           {activeTab() === 'crop' && (
-            <div id="previewContentRef" class={styles.MediaEditorCropContent} ref={previewContentRef}>
-              <Crop
-                state={state.crop}
-                image={cropPreview()}
-                onCropChange={onCropChange}
-              />
-            </div>
+            // <div id="previewContentRef" class={styles.MediaEditorCropContent} ref={previewContentRef}>
+            <Crop
+              state={state.crop}
+              image={cropPreview()}
+              onCropChange={onCropChange}
+            />
+            // </div>
           )}
         </div>
 
@@ -1233,8 +1235,8 @@ export const MediaEditor = () => {
                       // clickable={() => setState('crop', {aspectRatio: '9:16'})}
                       rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '9:16' && styles.Active]}
                       clickable={() => {
-                        applyCrop();
                         setActiveTab('enhance');
+                        setTimeout(applyCrop);
                       }}
                     />
                   </div>
