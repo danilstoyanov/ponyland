@@ -13,8 +13,12 @@ import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
-// import png from './main-canvas.png';
-import png from './with_footer.png';
+import main_canvas_png from './main-canvas.png';
+// import png from './with_footer.png';
+import img_200x200_1_1 from './200x200_1_1.png';
+import img_320x200_8_5 from './320x200_8_5.png';
+import img_3840x2160_8_4 from './3840x2160_8_4.png';
+import img_3840x3840_1_1 from './3840x3840_1_1.png';
 
 // import png from './sonic.jpg';
 // import png from './small.png';
@@ -255,7 +259,6 @@ type MediaEditorFilterState = {
 export const MediaEditor = () => {
   let previewRef: HTMLDivElement;
   let previewContentRef: HTMLDivElement;
-  let innerPreviewRef: HTMLDivElement;
   let stickerTabRef: HTMLDivElement;
   let filterLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
@@ -394,9 +397,7 @@ export const MediaEditor = () => {
   };
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
-  const [originalImageBitMap, setOriginalImageBitMap] = createSignal<ImageBitmap>();
   const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
-  const [previewDimensions, setPreviewDimensions] = createSignal<any>();
   const [preview, setPreview] = createSignal<string>();
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
   const [cropAspectRatio, setCropAspectRatio] = createSignal<CropAspectRatio>('Free');
@@ -615,15 +616,10 @@ export const MediaEditor = () => {
     setState('entities', state.selectedEntityId, {textAlign})
   };
 
-  function getScaledImageSize(ref: any, originalImageRef: any): { width: number, height: number } {
-    const previewWidth = ref.clientWidth - (window.innerWidth * 0.2);
+  function getScaledImageSize(ref: HTMLDivElement, originalImageRef: HTMLImageElement) {
+    const workareaPadding = (window.innerWidth * 0.2);
+    const previewWidth = ref.clientWidth - workareaPadding;
     const previewHeight = ref.clientHeight;
-
-    console.log('===');
-    console.log('getBoundingClientRect: ', ref.getBoundingClientRect());
-    console.log('previewWidth: ', previewWidth);
-    console.log('previewHeight: ', previewHeight);
-    console.log('===');
 
     // Natural dimensions of the original image
     const originalWidth = originalImageRef.naturalWidth;
@@ -654,67 +650,52 @@ export const MediaEditor = () => {
   }
 
   // * Resize management
-  // unfortunately relying on auto-scaling won't work for us, to save some time for contest, let's adjust working area manually
-  // cause by spec on resize canvas would be reset and having black background 🙈
+  // Unfortunately, canvas
   const handleWindowResize = debounce(() => {
-    if(originalImage()) {
-      const startTime = performance.now();
+    const filterLayerCtx = filterLayerCanvas.getContext('2d');
+    const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
 
-      // Get contexts for both layers
-      const filterLayerCtx = filterLayerCanvas.getContext('2d');
-      const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
+    // Save the current state of both layers
+    // let filterLayerData = null;
+    const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
 
-      // Save the current state of both layers
-      let filterLayerData = null;
-      let drawingLayerData = null;
+    // if(filterLayerCtx) {
+    //   filterLayerData = filterLayerCtx.getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+    // }
 
-      if(filterLayerCtx) {
-        filterLayerData = filterLayerCtx.getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-      }
+    const dimensions = getScaledImageSize(previewRef, originalImage());
 
-      if(drawingLayerCtx) {
-        drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-      }
+    previewContentRef.style.width = `${dimensions.width}px`;
+    previewContentRef.style.height = `${dimensions.height}px`;
 
-      const dimensions = getScaledImageSize(previewRef, originalImage());
+    filterLayerCanvas.width = dimensions.width;
+    filterLayerCanvas.height = dimensions.height;
 
-      previewContentRef.style.width = `${dimensions.width}px`;
-      previewContentRef.style.height = `${dimensions.height}px`;
-      innerPreviewRef.style.height = `${dimensions.height}px`;
-      innerPreviewRef.style.width = `${dimensions.width}px`;
+    drawingLayerCanvas.width = dimensions.width;
+    drawingLayerCanvas.height = dimensions.height;
 
-      filterLayerCanvas.width = dimensions.width;
-      filterLayerCanvas.height = dimensions.height;
+    // Clear and redraw the filter layer
+    if(filterLayerCtx) {
+      filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+      filterLayerCtx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+    }
 
-      drawingLayerCanvas.width = dimensions.width;
-      drawingLayerCanvas.height = dimensions.height;
-
-      // Clear and redraw the filter layer
-      if(filterLayerCtx) {
-        filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-        filterLayerCtx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
-      }
-
-      // Clear and restore the drawing layer
-      if(drawingLayerCtx) {
-        drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-
-        if(drawingLayerData) {
-          drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
-        }
-      }
-
-      const endTime = performance.now();
-      console.log(`Call to doSomething took ${endTime - startTime} milliseconds`);
+    // Clear and restore the drawing layer
+    if(drawingLayerCtx) {
+      drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+      drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
     }
   }, 16);
 
-
   // * On Mount
   onMount(() => {
-    console.log('previewContentRef.clientWidth: ', previewContentRef.clientWidth);
-    console.log('previewContentRef.clientHeight: ', previewContentRef.clientHeight);
+    // img_200x200_1_1
+    // img_320x200_8_5
+    // img_3840x2160_8_4
+    // img_3840x3840_1_1
+    // main_canvas_png
 
+    const png = main_canvas_png;
     const image = new Image();
 
     image.addEventListener('load', () => {
@@ -724,10 +705,6 @@ export const MediaEditor = () => {
 
       previewContentRef.style.width = `${dimensions.width}px`;
       previewContentRef.style.height = `${dimensions.height}px`;
-      innerPreviewRef.style.width = `${dimensions.width}px`;
-      innerPreviewRef.style.height = `${dimensions.height}px`;
-
-      setPreviewDimensions({width: dimensions.width, height: dimensions.height});
 
       filterLayerCanvas.width = dimensions.width;
       filterLayerCanvas.height = dimensions.height;
@@ -783,9 +760,9 @@ export const MediaEditor = () => {
     <div class={styles.MediaEditor}>
       <div class={styles.MediaEditorContainer}>
         <div class={styles.MediaEditorPreview} ref={previewRef}>
-          <div class={styles.MediaEditorInnerPreview} ref={innerPreviewRef}>
+          <div class={styles.MediaEditorInnerPreview}>
             <div
-              // style={{display: activeTab() === 'crop' ? 'none' : 'initial'}}
+              style={{display: activeTab() === 'crop' ? 'none' : 'initial'}}
               class={styles.MediaEditorPreviewContent}
               ref={previewContentRef}
             >
