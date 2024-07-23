@@ -516,6 +516,20 @@ export const MediaEditor = () => {
       imageWidth: originalImage().width
     });
 
+    // crop: {
+    //   x: 0,
+    //   y: 0,
+    //   height: 0,
+    //   width: 0,
+    //   workareaHeight: 0,
+    //   workareaWidth: 0,
+    //   rotate: 0,
+    //   tilt: 0,
+    //   isFlipped: false,
+    //   isApplied: false,
+    //   aspectRatio: 'Free'
+    // },
+
     const filterLayerCtx = filterLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
 
@@ -537,20 +551,33 @@ export const MediaEditor = () => {
     previewContentRef.style.width = `${dimensions.width}px`;
     previewContentRef.style.height = `${dimensions.height}px`;
 
-    // Clear and redraw the filter layer with the cropped image, adjusted for scaling
+    // Apply rotation
+    const rotate = state.crop.tilt; // Assuming state.crop.rotate holds the rotation in degrees
+
+    // Clear and redraw the filter layer with the cropped image, adjusted for scaling and rotation
     if(filterLayerCtx) {
       filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+
+      // Translate to center, rotate, then translate back
+      filterLayerCtx.save(); // Save the current canvas state
+
+      filterLayerCtx.translate(dimensions.width / 2, dimensions.height / 2); // Move the origin to the center of the canvas
+      filterLayerCtx.rotate((rotate * Math.PI) / 180); // Rotate by the angle in radians
       filterLayerCtx.drawImage(
         originalImage(),
         x, y, width, height, // Source rectangle
-        0, 0, dimensions.width, dimensions.height // Destination rectangle
+        -dimensions.width / 2, -dimensions.height / 2, dimensions.width, dimensions.height // Destination rectangle
       );
-    }
 
-    // Clear and restore the drawing layer
-    if(drawingLayerCtx) {
-      drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-      drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
+      filterLayerCtx.restore(); // Restore the canvas state
+
+      debugger;
+
+      // Clear and restore the drawing layer
+      if(drawingLayerCtx) {
+        drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+        drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
+      }
     }
   };
 
@@ -825,7 +852,9 @@ export const MediaEditor = () => {
 
   // * On Mount
   onMount(() => {
-    const png = img_crop_debugger;
+    // const png = img_crop_debugger;
+    const png = img_3840x2160_8_4;
+
     const image = new Image();
 
     image.addEventListener('load', () => {

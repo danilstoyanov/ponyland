@@ -18,13 +18,6 @@ export type CropAspectRatio = 'Free'
   | '16:9'
   | '9:16';
 
-interface CropArea {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 interface CropPops {
   state: MediaEditorCropState;
   image: HTMLImageElement;
@@ -134,11 +127,11 @@ const CropBar = (props: Partial<CropBarProps>) => {
     });
   });
 
-  createEffect(() => {
-    if(props.onAngleChange) {
-      props.onAngleChange(currentAngle());
-    }
-  });
+  // createEffect(() => {
+  //   if(props.onAngleChange) {
+  //     props.onAngleChange(currentAngle());
+  //   }
+  // });
 
   return (
     <div class={styles.MediaEditorCropBarContainer}>
@@ -172,26 +165,8 @@ const CropBar = (props: Partial<CropBarProps>) => {
 };
 
 export const Crop = (props: CropPops) => {
-  const [localState, setLocalState] = createSignal(props.state);
-
-  // Create an effect to update localCrop when crop prop changes
-  createEffect(() => {
-    setLocalState(props.state);
-
-    console.log('unwrap(props.state): ', unwrap(props.state));
-  });
-
   function handleCropChange(cropState: Partial<MediaEditorCropState>) {
-    setLocalState({
-      ...localState(),
-      ...cropState
-    });
-
-    console.log('===change===');
-    console.log(unwrap(cropState), unwrap(localState()));
-    console.log('===change===');
-
-    props.onCropChange(localState());
+    props.onCropChange(cropState);
   }
 
   let containerRef: HTMLDivElement;
@@ -538,6 +513,8 @@ export const Crop = (props: CropPops) => {
 
     overlayImageRef.style.transform = `rotate(${value}deg) scale(${scalingFactor})`;
     cropImageRef.style.transform = `rotate(${value}deg) scale(${scalingFactor})`;
+
+    handleCropChange({tilt: value})
   };
 
   const handleRotateClick = () => {
@@ -575,6 +552,8 @@ export const Crop = (props: CropPops) => {
     // Apply the new transformation
     overlayImageRef.style.transform = `rotate(${currentAngle}deg) scaleX(${flipX})`;
     cropImageRef.style.transform = `rotate(${currentAngle}deg) scaleX(${flipX})`;
+
+    handleCropChange({rotate: currentAngle})
   };
 
   const handleFlipClick = () => {
