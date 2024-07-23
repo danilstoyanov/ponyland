@@ -97,6 +97,17 @@ interface MediaEditorTool {
   instance?: any;
 }
 
+export interface MediaEditorCropState {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  tilt: number; // tilt is angle we can choose on ruler
+  rotate: number; // rotate is angle we can apply with button
+  isFlipped: false;
+  isApplied: false;
+}
+
 const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
   const [local, others] = splitProps(props, ['label']);
   const [currentValue, setCurrentValue] = createSignal(props.value);
@@ -239,10 +250,11 @@ const MediaEditorTool = (props: MediaEditorToolProps) => {
 };
 
 type MediaEditorStateType = {
-  selectedEntityId: number;
   selectedToolId: number;
+  selectedEntityId: number;
   tools: MediaEditorTool[];
   entities: Array<TextEntityType | StickerEntityType>;
+  crop: MediaEditorCropState;
 };
 
 type MediaEditorFilter = {
@@ -289,7 +301,7 @@ export const MediaEditor = () => {
 
   const randomColorImage = createRandomColorImage();
 
-  const initialState: any = {
+  const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
     selectedToolId: 0,
     tools: [
@@ -379,15 +391,16 @@ export const MediaEditor = () => {
         node: randomColorImage
       }
     ],
-    canvas: {
-      // Those 2 canvases are always
-      originalFilter: {},
-      originalDrawing: {}
+    crop: {
+      x: 0,
+      y: 0,
+      height: 0,
+      width: 0,
+      rotate: 0,
+      tilt: 0,
+      isFlipped: false,
+      isApplied: false
     }
-    // workarea: {
-    //   width: ,
-    //   height: ,
-    // }
   }
 
   const initialFilterState: MediaEditorFilterState = {
@@ -397,6 +410,7 @@ export const MediaEditor = () => {
   };
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
+
   const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
   const [preview, setPreview] = createSignal<string>();
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
@@ -407,6 +421,111 @@ export const MediaEditor = () => {
 
   const handleTabClick = (tab: MediaEditorTab) => {
     setActiveTab(tab);
+  };
+
+  // * Crop Application
+  const applyCrop = () => {
+    console.log('state.crop: ', unwrap(state.crop));
+
+    const ctx = filterLayerCanvas.getContext('2d');
+    const originalImg = originalImage();
+
+    // Load the original image into the context
+    ctx.drawImage(originalImg, 0, 0);
+
+    // Extract the cropped portion
+    const croppedImage = ctx.getImageData(state.crop.x, state.crop.y, state.crop.width, state.crop.height);
+
+    // Clear the canvas
+    ctx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+
+    // Apply the tilt (rotation)
+    ctx.save();
+    ctx.translate(state.crop.width / 2, state.crop.height / 2);
+    ctx.rotate((state.crop.tilt * Math.PI) / 180);
+    ctx.translate(-state.crop.width / 2, -state.crop.height / 2);
+    ctx.putImageData(croppedImage, 0, 0);
+    ctx.restore();
+
+    // const filterLayerCanvas: HTMLCanvasElement;
+    // const originalImage(): ;
+
+    // state.crop will be objectwith signature like
+    // crop: {
+    //   x: number,
+    //   y: number,
+    //   height: number,
+    //   width: number,
+    //   rotate: number,
+    //   tilt: number,
+    //   isFlipped: false,
+    //   isApplied: false
+    // }
+
+    /*
+      Hi chat GPT, let's do some cool code okay?
+
+      You will be having ref to some canvas element which displays an image
+      First thing you do is load original image to its context
+      Next thing, you will need to scan object and do following things
+      Identify x(left) and y(top) offset as starting points, then you have to pick width and height, and crop it from image
+      Then you apply tilt to this image
+      Then you update canvas so it displays new image, then you do some resizing logic like here
+        const handleWindowResize = debounce(() => {
+    const filterLayerCtx = filterLayerCanvas.getContext('2d');
+    const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
+
+    // Save the current state of both layers
+    // let filterLayerData = null;
+    const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+
+    // if(filterLayerCtx) {
+    //   filterLayerData = filterLayerCtx.getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+    // }
+
+    const dimensions = getScaledImageSize(previewRef, originalImage());
+
+    previewContentRef.style.width = `${dimensions.width}px`;
+    previewContentRef.style.height = `${dimensions.height}px`;
+
+    filterLayerCanvas.width = dimensions.width;
+    filterLayerCanvas.height = dimensions.height;
+
+    drawingLayerCanvas.width = dimensions.width;
+    drawingLayerCanvas.height = dimensions.height;
+
+    // Clear and redraw the filter layer
+    if(filterLayerCtx) {
+      filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+      filterLayerCtx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+    }
+
+    // Clear and restore the drawing layer
+    if(drawingLayerCtx) {
+      drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+      drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
+    }
+  }, 16);
+
+
+    */
+  };
+
+  const onCropChange = (crop: MediaEditorCropState) => {
+    setState('crop', prevState => ({
+      ...prevState,
+      ...crop
+    }));
+
+    // crop: {
+    //   x: 0,
+    //   y: 0,
+    //   height: 0,
+    //   width: 0,
+    //   rotate: 0,
+    //   isFlipped: false,
+    //   isApplied: false
+    // }
   };
 
   // * Canvas Renderer
@@ -647,7 +766,7 @@ export const MediaEditor = () => {
       width: newWidth,
       height: newHeight
     };
-  }
+  };
 
   // * Resize management
   // Unfortunately, canvas
@@ -789,10 +908,10 @@ export const MediaEditor = () => {
                       ]}
                     >
                       {isTextEntity(entity) ? (
-                          <TextEntity {...entity} />
-                        ) : (
-                          <StickerEntity {...entity} />
-                        )}
+                        <TextEntity {...entity} />
+                      ) : (
+                        <StickerEntity {...entity} />
+                      )}
                     </TransformableEntity>
                   )
                 }}
@@ -812,9 +931,10 @@ export const MediaEditor = () => {
           {activeTab() === 'crop' && (
             <div class={styles.MediaEditorCropContent} ref={previewContentRef}>
               <Crop
+                state={state.crop}
                 image={cropPreview()}
+                onCropChange={onCropChange}
                 aspectRatio={cropAspectRatio()}
-                onCrop={() => alert('crop happened')}
               />
             </div>
           )}
@@ -1073,6 +1193,17 @@ export const MediaEditor = () => {
                         rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '9:16' && styles.Active]}
                       />
                     </div>
+
+                    <RowTsx
+                      title='DO CROP'
+                      icon='bomb'
+                      iconClasses={['row-icon-rotated']}
+                      // clickable={() => setCropAspectRatio('9:16')}
+                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '9:16' && styles.Active]}
+                      clickable={() => {
+                        applyCrop();
+                      }}
+                    />
                   </div>
                 </div>
               )}
