@@ -15,6 +15,7 @@ import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
 import main_canvas_png from './main-canvas.png';
 // import png from './with_footer.png';
+import img_crop_debugger from './CROP_DEBUGGER.png';
 import img_200x200_1_1 from './200x200_1_1.png';
 import img_320x200_8_5 from './320x200_8_5.png';
 import img_3840x2160_8_4 from './3840x2160_8_4.png';
@@ -102,10 +103,13 @@ export interface MediaEditorCropState {
   y: number;
   width: number;
   height: number;
+  workareaHeight: number;
+  workareaWidth: number;
   tilt: number; // tilt is angle we can choose on ruler
   rotate: number; // rotate is angle we can apply with button
   isFlipped: false;
   isApplied: false;
+  aspectRatio: CropAspectRatio;
 }
 
 const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
@@ -268,6 +272,11 @@ type MediaEditorFilterState = {
   isProcessing: boolean;
 };
 
+type MediaEditorWorkareaDimensions = {
+  width: number;
+  height: number;
+};
+
 export const MediaEditor = () => {
   let previewRef: HTMLDivElement;
   let previewContentRef: HTMLDivElement;
@@ -349,57 +358,60 @@ export const MediaEditor = () => {
       }
     ],
     entities: [
-      {
-        id: 0,
-        x: 100,
-        y: 100,
-        width: 300,
-        height: 100,
-        type: 'text',
-        textAlign: 'left',
-        appearance: 'plain',
-        backgroundColor: '',
-        fontSize: 32,
-        fontFamily: 'Roboto',
-        color: '#fff',
-        rotate: 0
-      },
-      {
-        id: 1,
-        x: 200,
-        y: 150,
-        width: 200,
-        height: 100,
-        type: 'text',
-        textAlign: 'left',
-        appearance: 'plain',
-        backgroundColor: '',
-        fontSize: 32,
-        fontFamily: 'Roboto',
-        color: '#fff',
-        rotate: 0
-      },
-      {
-        id: 2,
-        x: 300,
-        y: 300,
-        width: 200,
-        height: 200,
-        type: 'sticker',
-        color: '#fff',
-        rotate: 0,
-        node: randomColorImage
-      }
+      // {
+      //   id: 0,
+      //   x: 100,
+      //   y: 100,
+      //   width: 300,
+      //   height: 100,
+      //   type: 'text',
+      //   textAlign: 'left',
+      //   appearance: 'plain',
+      //   backgroundColor: '',
+      //   fontSize: 32,
+      //   fontFamily: 'Roboto',
+      //   color: '#fff',
+      //   rotate: 0
+      // },
+      // {
+      //   id: 1,
+      //   x: 200,
+      //   y: 150,
+      //   width: 200,
+      //   height: 100,
+      //   type: 'text',
+      //   textAlign: 'left',
+      //   appearance: 'plain',
+      //   backgroundColor: '',
+      //   fontSize: 32,
+      //   fontFamily: 'Roboto',
+      //   color: '#fff',
+      //   rotate: 0
+      // },
+      // {
+      //   id: 2,
+      //   x: 300,
+      //   y: 300,
+      //   width: 200,
+      //   height: 200,
+      //   type: 'sticker',
+      //   color: '#fff',
+      //   rotate: 0,
+      //   node: randomColorImage
+      // }
     ],
     crop: {
       x: 0,
       y: 0,
       height: 0,
       width: 0,
+      workareaHeight: 0,
+      workareaWidth: 0,
       rotate: 0,
       tilt: 0,
       isFlipped: false,
-      isApplied: false
+      isApplied: false,
+      aspectRatio: 'Free'
     }
   }
 
@@ -410,11 +422,13 @@ export const MediaEditor = () => {
   };
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
+  const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
 
   const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
   const [preview, setPreview] = createSignal<string>();
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
-  const [cropAspectRatio, setCropAspectRatio] = createSignal<CropAspectRatio>('Free');
+
+  // const [cropAspectRatio, setCropAspectRatio] = createSignal<CropAspectRatio>('Free');
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
   const [filterState, setFilterState] = createStore<MediaEditorFilterState>(initialFilterState);
@@ -423,81 +437,66 @@ export const MediaEditor = () => {
     setActiveTab(tab);
   };
 
+  function scaleCropToOriginalImage(crop: MediaEditorCropState, originalImage: HTMLImageElement) {
+    const {
+      x,
+      y,
+      width,
+      height,
+      workareaHeight,
+      workareaWidth
+    } = crop;
+
+    const originalImageWidth = originalImage.naturalWidth;
+    const originalImageHeight = originalImage.naturalHeight;
+
+    // Вычисляем масштабные коэффициенты для ширины и высоты
+    const scaleX = originalImageWidth / workareaWidth;
+    const scaleY = originalImageHeight / workareaHeight;
+
+    // Пропорционально вычисляем x, y, width, height для оригинального изображения
+    const scaledX = x * scaleX;
+    const scaledY = y * scaleY;
+    const scaledWidth = width * scaleX;
+    const scaledHeight = height * scaleY;
+
+    return {
+      x: scaledX,
+      y: scaledY,
+      width: scaledWidth,
+      height: scaledHeight
+    };
+  }
+
   // * Crop Application
   const applyCrop = () => {
-    console.log('state.crop: ', unwrap(state.crop));
+    const {x, y, width, height} = scaleCropToOriginalImage(state.crop, originalImage());
 
-    const ctx = filterLayerCanvas.getContext('2d');
-    const originalImg = originalImage();
-
-    // Load the original image into the context
-    ctx.drawImage(originalImg, 0, 0);
-
-    // Extract the cropped portion
-    const croppedImage = ctx.getImageData(state.crop.x, state.crop.y, state.crop.width, state.crop.height);
-
-    // Clear the canvas
-    ctx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-
-    // Apply the tilt (rotation)
-    ctx.save();
-    ctx.translate(state.crop.width / 2, state.crop.height / 2);
-    ctx.rotate((state.crop.tilt * Math.PI) / 180);
-    ctx.translate(-state.crop.width / 2, -state.crop.height / 2);
-    ctx.putImageData(croppedImage, 0, 0);
-    ctx.restore();
-
-    // const filterLayerCanvas: HTMLCanvasElement;
-    // const originalImage(): ;
-
-    // state.crop will be objectwith signature like
-    // crop: {
-    //   x: number,
-    //   y: number,
-    //   height: number,
-    //   width: number,
-    //   rotate: number,
-    //   tilt: number,
-    //   isFlipped: false,
-    //   isApplied: false
-    // }
-
-    /*
-      Hi chat GPT, let's do some cool code okay?
-
-      You will be having ref to some canvas element which displays an image
-      First thing you do is load original image to its context
-      Next thing, you will need to scan object and do following things
-      Identify x(left) and y(top) offset as starting points, then you have to pick width and height, and crop it from image
-      Then you apply tilt to this image
-      Then you update canvas so it displays new image, then you do some resizing logic like here
-        const handleWindowResize = debounce(() => {
     const filterLayerCtx = filterLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
 
-    // Save the current state of both layers
-    // let filterLayerData = null;
+    // Save the current state of the drawing layer
     const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
 
-    // if(filterLayerCtx) {
-    //   filterLayerData = filterLayerCtx.getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-    // }
+    // Get scaled image size
+    const dimensions = getScaledImageSize(previewContentRef, originalImage());
 
-    const dimensions = getScaledImageSize(previewRef, originalImage());
-
-    previewContentRef.style.width = `${dimensions.width}px`;
-    previewContentRef.style.height = `${dimensions.height}px`;
-
+    // Update canvas dimensions
     filterLayerCanvas.width = dimensions.width;
     filterLayerCanvas.height = dimensions.height;
-
     drawingLayerCanvas.width = dimensions.width;
     drawingLayerCanvas.height = dimensions.height;
 
-    // Clear and redraw the filter layer
+    setWorkareaDimensions(dimensions);
+
+    // Clear and redraw the filter layer with the cropped image, adjusted for scaling
     if(filterLayerCtx) {
       filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-      filterLayerCtx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+      filterLayerCtx.drawImage(
+        originalImage(),
+        x, y, width, height,  // Source rectangle
+        0, 0, dimensions.width, dimensions.height   // Destination rectangle
+      );
     }
 
     // Clear and restore the drawing layer
@@ -505,11 +504,13 @@ export const MediaEditor = () => {
       drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
       drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
     }
-  }, 16);
 
+    previewContentRef.style.width = `${dimensions.width}px`;
+    previewContentRef.style.height = `${dimensions.height}px`;
 
-    */
+    debugger;
   };
+
 
   const onCropChange = (crop: MediaEditorCropState) => {
     setState('crop', prevState => ({
@@ -599,25 +600,31 @@ export const MediaEditor = () => {
   }
 
   // * FITLER UPDATE WITH RENDER-PIPELINE APPLIED
+  const applyFilters = (canvas: HTMLCanvasElement) => {
+    const filterMap: Record<FilterType, any> = {
+      brightness: applyBrightness,
+      contrast: applyContrast,
+      saturation: applySaturation,
+      enhance: applyEnhance,
+      fade: applyFade,
+      grain: applyGrain,
+      highlights: applyHighlights,
+      shadows: applySelectiveShadow,
+      sharpen: applySharp,
+      warmth: applyWarmth,
+      vignette: applyVignette
+    }
+
+    filterState.appliedFilters.forEach(filter => {
+      filterMap[filter.id](canvas, filter.value);
+    })
+  };
+
   const handleFilterUpdate = (type: FilterType) => {
     return throttle(async(value: number) => {
       const ctx = filterLayerCanvas.getContext('2d');
       const dimensions = getScaledImageSize(previewRef, originalImage());
       ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
-
-      const filterMap: Record<FilterType, any> = {
-        brightness: applyBrightness,
-        contrast: applyContrast,
-        saturation: applySaturation,
-        enhance: applyEnhance,
-        fade: applyFade,
-        grain: applyGrain,
-        highlights: applyHighlights,
-        shadows: applySelectiveShadow,
-        sharpen: applySharp,
-        warmth: applyWarmth,
-        vignette: applyVignette
-      }
 
       setFilterState('appliedFilters', (filters) => {
         if(value === 0) {
@@ -633,17 +640,10 @@ export const MediaEditor = () => {
 
       // FILTER PERFORMANCE
       const startTime = performance.now();
-
-      filterState.appliedFilters.forEach(filter => {
-        if(type === filter.id) {
-          filterMap[filter.id](filterLayerCanvas, value);
-        } else {
-          filterMap[filter.id](filterLayerCanvas, filter.value);
-        }
-      })
-
+      applyFilters(filterLayerCanvas);
       const endTime = performance.now();
       const elapsedTime = endTime - startTime;
+
       console.log(`Filter pipeline execution time: ${elapsedTime} milliseconds`);
     }, 16);
   };
@@ -793,6 +793,8 @@ export const MediaEditor = () => {
     drawingLayerCanvas.width = dimensions.width;
     drawingLayerCanvas.height = dimensions.height;
 
+    setWorkareaDimensions(dimensions);
+
     // Clear and redraw the filter layer
     if(filterLayerCtx) {
       filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
@@ -813,8 +815,9 @@ export const MediaEditor = () => {
     // img_3840x2160_8_4
     // img_3840x3840_1_1
     // main_canvas_png
+    // img_crop_debugger
 
-    const png = main_canvas_png;
+    const png = img_crop_debugger;
     const image = new Image();
 
     image.addEventListener('load', () => {
@@ -831,12 +834,14 @@ export const MediaEditor = () => {
       drawingLayerCanvas.width = dimensions.width;
       drawingLayerCanvas.height = dimensions.height;
 
-      const ctx = filterLayerCanvas.getContext('2d');
-      const img = ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+      setWorkareaDimensions(dimensions);
 
-      const drawingCtx = drawingLayerCanvas.getContext('2d');
-      drawingCtx.fillStyle = 'blue';
-      drawingCtx.fillRect(0, 0, 100, 200);
+      const ctx = filterLayerCanvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+
+      // const drawingCtx = drawingLayerCanvas.getContext('2d');
+      // drawingCtx.fillStyle = 'blue';
+      // drawingCtx.fillRect(0, 0, 100, 200);
 
       DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
       DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
@@ -877,10 +882,37 @@ export const MediaEditor = () => {
 
   return (
     <div class={styles.MediaEditor}>
+
+      <div style={{
+        'position': 'absolute',
+        'top': 0,
+        'left': 0,
+        'width': '200px',
+        'background': 'rgba(255, 255, 255, 0.5)',
+        'color': 'black',
+        'font-size': '12px',
+        'z-index': 1000,
+        'pointer-events': 'none'
+      }}>
+        <p>Img natural h: {originalImage() && originalImage().naturalHeight}</p>
+        <p>Img natural w: {originalImage() && originalImage().naturalWidth}</p>
+        <p>_______</p>
+        <p>P.Content h: {workareaDimensions() && Math.floor(workareaDimensions().height)}</p>
+        <p>P.Content w: {workareaDimensions() && Math.floor(workareaDimensions().width)}</p>
+        <p>______</p>
+        <p>crop h: {state.crop.height}</p>
+        <p>crop w: {state.crop.width}</p>
+        <p>crop x: {state.crop.x}</p>
+        <p>crop y: {state.crop.y}</p>
+        <p>crop WA h: {state.crop.workareaHeight}</p>
+        <p>crop WA w: {state.crop.workareaWidth}</p>
+      </div>
+
       <div class={styles.MediaEditorContainer}>
         <div class={styles.MediaEditorPreview} ref={previewRef}>
           <div class={styles.MediaEditorInnerPreview}>
             <div
+              id="previewContentRef"
               style={{display: activeTab() === 'crop' ? 'none' : 'initial'}}
               class={styles.MediaEditorPreviewContent}
               ref={previewContentRef}
@@ -921,6 +953,7 @@ export const MediaEditor = () => {
                 ref={drawingLayerCanvas}
                 class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewDrawingLayer)}
               />
+
               <canvas
                 ref={filterLayerCanvas}
                 class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
@@ -929,12 +962,11 @@ export const MediaEditor = () => {
           </div>
 
           {activeTab() === 'crop' && (
-            <div class={styles.MediaEditorCropContent} ref={previewContentRef}>
+            <div id="previewContentRef" class={styles.MediaEditorCropContent} ref={previewContentRef}>
               <Crop
                 state={state.crop}
                 image={cropPreview()}
                 onCropChange={onCropChange}
-                aspectRatio={cropAspectRatio()}
               />
             </div>
           )}
@@ -1091,38 +1123,38 @@ export const MediaEditor = () => {
                     <RowTsx
                       title='Free'
                       icon='aspect_ratio_free'
-                      clickable={() => setCropAspectRatio('Free')}
-                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === 'Free' && styles.Active]}
+                      clickable={() => setState('crop', {aspectRatio: 'Free'})}
+                      rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === 'Free' && styles.Active]}
                     />
 
                     <RowTsx
                       title='Original'
                       icon='aspect_ratio_image_original'
-                      clickable={() => setCropAspectRatio('Original')}
-                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === 'Original' && styles.Active]}
+                      clickable={() => setState('crop', {aspectRatio: 'Original'})}
+                      rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === 'Original' && styles.Active]}
                     />
 
                     <RowTsx
                       title='Square'
                       icon='aspect_ratio_square'
-                      clickable={() => setCropAspectRatio('Square')}
-                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === 'Square' && styles.Active]}
+                      clickable={() => setState('crop', {aspectRatio: 'Square'})}
+                      rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === 'Square' && styles.Active]}
                     />
 
                     <div class={styles.MediaEditorSidebarTabsContentTabPanelCropRow}>
                       <RowTsx
                         title='3:2'
                         icon='aspect_ratio_3_2'
-                        clickable={() => setCropAspectRatio('3:2')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '3:2' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '3:2'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '3:2' && styles.Active]}
                       />
 
                       <RowTsx
                         title='2:3'
                         icon='aspect_ratio_3_2'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => setCropAspectRatio('2:3')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '2:3' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '2:3'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '2:3' && styles.Active]}
                       />
                     </div>
 
@@ -1130,16 +1162,16 @@ export const MediaEditor = () => {
                       <RowTsx
                         title='4:3'
                         icon='aspect_ratio_4_3'
-                        clickable={() => setCropAspectRatio('4:3')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '4:3' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '4:3'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '4:3' && styles.Active]}
                       />
 
                       <RowTsx
                         title='3:4'
                         icon='aspect_ratio_4_3'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => setCropAspectRatio('3:4')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '3:4' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '3:4'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '3:4' && styles.Active]}
                       />
                     </div>
 
@@ -1147,16 +1179,16 @@ export const MediaEditor = () => {
                       <RowTsx
                         title='5:4'
                         icon='aspect_ratio_5_4'
-                        clickable={() => setCropAspectRatio('5:4')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '5:4' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '5:4'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '5:4' && styles.Active]}
                       />
 
                       <RowTsx
                         title='4:5'
                         icon='aspect_ratio_5_4'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => setCropAspectRatio('4:5')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '4:5' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '4:5'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '4:5' && styles.Active]}
                       />
                     </div>
 
@@ -1164,16 +1196,16 @@ export const MediaEditor = () => {
                       <RowTsx
                         title='7:5'
                         icon='aspect_ratio_7_5'
-                        clickable={() => setCropAspectRatio('7:5')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '7:5' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '7:5'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '7:5' && styles.Active]}
                       />
 
                       <RowTsx
                         title='5:7'
                         icon='aspect_ratio_7_5'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => setCropAspectRatio('5:7')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '5:7' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '5:7'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '5:7' && styles.Active]}
                       />
                     </div>
 
@@ -1181,16 +1213,16 @@ export const MediaEditor = () => {
                       <RowTsx
                         title='16:9'
                         icon='aspect_ratio_16_9'
-                        clickable={() => setCropAspectRatio('16:9')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '16:9' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '16:9'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '16:9' && styles.Active]}
                       />
 
                       <RowTsx
                         title='9:16'
                         icon='aspect_ratio_16_9'
                         iconClasses={['row-icon-rotated']}
-                        clickable={() => setCropAspectRatio('9:16')}
-                        rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '9:16' && styles.Active]}
+                        clickable={() => setState('crop', {aspectRatio: '9:16'})}
+                        rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '9:16' && styles.Active]}
                       />
                     </div>
 
@@ -1198,10 +1230,11 @@ export const MediaEditor = () => {
                       title='DO CROP'
                       icon='bomb'
                       iconClasses={['row-icon-rotated']}
-                      // clickable={() => setCropAspectRatio('9:16')}
-                      rowClasses={[styles.MediaEditorRow, cropAspectRatio() === '9:16' && styles.Active]}
+                      // clickable={() => setState('crop', {aspectRatio: '9:16'})}
+                      rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '9:16' && styles.Active]}
                       clickable={() => {
                         applyCrop();
+                        setActiveTab('enhance');
                       }}
                     />
                   </div>

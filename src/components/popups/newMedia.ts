@@ -818,9 +818,14 @@ export default class PopupNewMedia extends PopupElement {
 
       const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
+      console.debug('URL: ', url);
+
       await renderImageFromUrlPromise(img, url);
       const mimeType = params.file.type as MTMimeType;
       const scaled = await this.scaleImageForTelegram(img, mimeType, true);
+
+      console.debug('SCALED: ', scaled);
+
       if(scaled) {
         params.objectURL = scaled.url;
         params.scaledBlob = scaled.blob;

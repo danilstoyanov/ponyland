@@ -1,4 +1,5 @@
 import {createEffect, createSignal, JSX, onCleanup, onMount} from 'solid-js';
+import {createStore, unwrap} from 'solid-js/store';
 import type {MediaEditorCropState} from '.';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import styles from './mediaEditor.module.scss';
@@ -27,7 +28,6 @@ interface CropArea {
 interface CropPops {
   state: MediaEditorCropState;
   image: HTMLImageElement;
-  aspectRatio: CropAspectRatio;
   onCropChange: any;
 }
 
@@ -177,6 +177,8 @@ export const Crop = (props: CropPops) => {
   // Create an effect to update localCrop when crop prop changes
   createEffect(() => {
     setLocalState(props.state);
+
+    console.log('unwrap(props.state): ', unwrap(props.state));
   });
 
   function handleCropChange(cropState: Partial<MediaEditorCropState>) {
@@ -184,6 +186,10 @@ export const Crop = (props: CropPops) => {
       ...localState(),
       ...cropState
     });
+
+    console.log('===change===');
+    console.log(unwrap(cropState), unwrap(localState()));
+    console.log('===change===');
 
     props.onCropChange(localState());
   }
@@ -217,6 +223,8 @@ export const Crop = (props: CropPops) => {
 
     containerWrapperRef.style.width = width + 'px';
     containerWrapperRef.style.height = height + 'px';
+
+    console.log('updateCropSize: ', width, height);
 
     handleCropChange({width, height});
   }
@@ -316,6 +324,12 @@ export const Crop = (props: CropPops) => {
     updateCropSize(CROPWIDTH, CROPHEIGHT);
     updateCropImage(left, top);
     updateContainer(left, top);
+
+    handleCropChange({
+      workareaHeight: cropImageRef.height,
+      workareaWidth: cropImageRef.width
+    });
+
     addHandlers();
   }
 
@@ -388,13 +402,10 @@ export const Crop = (props: CropPops) => {
 
   // Usage of the method
   createEffect(() => {
-    adjustCropSizeToAspectRatio(props.aspectRatio);
+    adjustCropSizeToAspectRatio(props.state.aspectRatio);
   });
 
   const handleCropAreaResize = () => {
-    const cropperBox = containerRef;
-    const cropperOutBox = containerWrapperRef;
-
     const topRightNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-right]');
     const topLeftNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-left]');
     const bottomLeftNode = document.querySelector<HTMLDivElement>('[data-resize-action=bottom-left]');
@@ -415,10 +426,10 @@ export const Crop = (props: CropPops) => {
         const startX = e.clientX;
         const startY = e.clientY;
 
-        const initialWidth = cropperBox.offsetWidth;
-        const initialHeight = cropperBox.offsetHeight;
-        const initialLeft = cropperBox.offsetLeft;
-        const initialTop = cropperBox.offsetTop;
+        const initialWidth = containerRef.offsetWidth;
+        const initialHeight = containerRef.offsetHeight;
+        const initialLeft = containerRef.offsetLeft;
+        const initialTop = containerRef.offsetTop;
 
         const action = currentResizer.dataset.resizeAction;
 
@@ -451,7 +462,7 @@ export const Crop = (props: CropPops) => {
           if(height < minimum_size) height = minimum_size;
 
           // Respect the selected aspect ratio
-          switch(props.aspectRatio) {
+          switch(props.state.aspectRatio) {
             case 'Free':
               break; // Allow free resizing
             case 'Original':
@@ -462,7 +473,7 @@ export const Crop = (props: CropPops) => {
               height = width; // Keep width and height equal for square aspect ratio
               break;
             default:
-              const [aspectWidth, aspectHeight] = props.aspectRatio.split(':').map(Number);
+              const [aspectWidth, aspectHeight] = props.state.aspectRatio.split(':').map(Number);
               if(aspectWidth && aspectHeight) {
                 if(width / aspectWidth > height / aspectHeight) {
                   width = height * (aspectWidth / aspectHeight);
@@ -474,14 +485,14 @@ export const Crop = (props: CropPops) => {
           }
 
           // Update the cropper dimensions and position
-          cropperBox.style.width = width + 'px';
-          cropperOutBox.style.width = width + 'px';
-          cropperBox.style.height = height + 'px';
-          cropperOutBox.style.height = height + 'px';
-          cropperBox.style.left = left + 'px';
-          cropperOutBox.style.left = left + 'px';
-          cropperBox.style.top = top + 'px';
-          cropperOutBox.style.top = top + 'px';
+          containerRef.style.width = width + 'px';
+          containerWrapperRef.style.width = width + 'px';
+          containerRef.style.height = height + 'px';
+          containerWrapperRef.style.height = height + 'px';
+          containerRef.style.left = left + 'px';
+          containerWrapperRef.style.left = left + 'px';
+          containerRef.style.top = top + 'px';
+          containerWrapperRef.style.top = top + 'px';
 
           const maxWidth = overlayImageRef.offsetWidth;
           const maxHeight = overlayImageRef.offsetHeight;
@@ -489,18 +500,19 @@ export const Crop = (props: CropPops) => {
           // Ensure cropper stays within image bounds
           if(width > maxWidth) {
             width = maxWidth;
-            cropperBox.style.width = width + 'px';
-            cropperOutBox.style.width = width + 'px';
+            containerRef.style.width = width + 'px';
+            containerWrapperRef.style.width = width + 'px';
           }
 
           if(height > maxHeight) {
             height = maxHeight;
-            cropperBox.style.height = height + 'px';
-            cropperOutBox.style.height = height + 'px';
+            containerRef.style.height = height + 'px';
+            containerWrapperRef.style.height = height + 'px';
           }
 
           // Update the crop image position
           updateCropImage(left, top);
+          handleCropChange({width, height});
         }
 
         function stopResize() {
@@ -604,11 +616,12 @@ export const Crop = (props: CropPops) => {
 
   return (
     <div class={styles.MediaEditorCrop}>
-      <div class={styles.MediaEditorCropWorkArea} ref={cropWorkAreaRef}>
+      <div id="cropWorkAreaRef" class={styles.MediaEditorCropWorkArea} ref={cropWorkAreaRef}>
         <div class="crop-component">
           <div class="crop-overlay-wrapper">
-            <div class="crop-overlay" ref={containerRef}>
+            <div id="containerRef" class="crop-overlay" ref={containerRef}>
               <img
+                id="cropImageRef"
                 ref={cropImageRef}
                 draggable={false}
                 src={props.image.src}
@@ -616,7 +629,7 @@ export const Crop = (props: CropPops) => {
               />
             </div>
 
-            <div class="crop-grid" ref={containerWrapperRef}>
+            <div id="containerWrapperRef" class="crop-grid" ref={containerWrapperRef}>
               <div
                 class={`${styles.TransformableEntityCornerHandle} ${styles.TopLeft}`}
                 data-resize-action="top-left"
