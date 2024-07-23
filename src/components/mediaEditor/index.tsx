@@ -638,7 +638,7 @@ export const MediaEditor = () => {
 
     setCropPreview(img);
     handleTabClick('crop');
-  }
+  };
 
   // * FITLER UPDATE WITH RENDER-PIPELINE APPLIED
   const applyFilters = (canvas: HTMLCanvasElement) => {
@@ -905,6 +905,9 @@ export const MediaEditor = () => {
         <p>crop h: {state.crop.height}</p>
         <p>crop w: {state.crop.width}</p>
         <p>crop x: {state.crop.x}</p>
+        <p>crop y: {state.crop.y}</p>
+        <p>crop rotate: {state.crop.rotate}</p>
+        <p>crop tilt: {state.crop.tilt}</p>
         <p>crop y: {state.crop.y}</p>
         <p>crop WA h: {state.crop.workareaHeight}</p>
         <p>crop WA w: {state.crop.workareaWidth}</p>

@@ -526,7 +526,7 @@ export const Crop = (props: CropPops) => {
     });
   };
 
-  const handleRotatioAngleUpdate = (value: number) => {
+  const handleRotationAngleUpdate = (value: number) => {
     const theta = value * (Math.PI / 180);
     const absTheta = Math.abs(theta);
 
@@ -672,7 +672,7 @@ export const Crop = (props: CropPops) => {
       <CropBar
         onFlip={handleFlipClick}
         onRotate={handleRotateClick}
-        onAngleChange={handleRotatioAngleUpdate}
+        onAngleChange={handleRotationAngleUpdate}
       />
     </div>
   )
