@@ -309,9 +309,10 @@ export const MediaEditor = () => {
   let previewRef: HTMLDivElement;
   let previewContentRef: HTMLDivElement;
   let stickerTabRef: HTMLDivElement;
-  let filterLayerCanvas: HTMLCanvasElement;
+  let imageLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
   let DrawingManagerInstance: DrawingManager;
+  let workareaImage: ImageBitmap;
 
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
@@ -420,7 +421,6 @@ export const MediaEditor = () => {
       contentPreviewOriginalHeight: 0,
       contentPreviewOriginalWidth: 0
     }
-    // workarea: {}
   }
 
   const initialFilterState: MediaEditorFilterState = {
@@ -525,8 +525,8 @@ export const MediaEditor = () => {
 
     setWorkareaDimensions(dimensions);
 
-    filterLayerCanvas.width = dimensions.width;
-    filterLayerCanvas.height = dimensions.height;
+    imageLayerCanvas.width = dimensions.width;
+    imageLayerCanvas.height = dimensions.height;
 
     drawingLayerCanvas.width = dimensions.width;
     drawingLayerCanvas.height = dimensions.height;
@@ -534,10 +534,10 @@ export const MediaEditor = () => {
     previewContentRef.style.width = `${dimensions.width}px`;
     previewContentRef.style.height = `${dimensions.height}px`;
 
-    const filterLayerCtx = filterLayerCanvas.getContext('2d');
+    const imageLayerCtx = imageLayerCanvas.getContext('2d');
 
-    filterLayerCtx.fillRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-    filterLayerCtx.fillStyle = 'green';
+    imageLayerCtx.fillRect(0, 0, imageLayerCanvas.width, imageLayerCanvas.height);
+    imageLayerCtx.fillStyle = 'green';
 
     let cropImageBitmap = await createImageBitmap(originalImage());
 
@@ -553,9 +553,9 @@ export const MediaEditor = () => {
       cropImageBitmap = await tiltImage(cropImageBitmap, state.crop.tilt);
     }
 
-    filterLayerCtx.drawImage(cropImageBitmap, x, y, width, height, 0, 0, dimensions.width, dimensions.height);
+    imageLayerCtx.drawImage(cropImageBitmap, x, y, width, height, 0, 0, dimensions.width, dimensions.height);
+    workareaImage = await createImageBitmap(imageLayerCanvas);
   };
-
 
   const onCropChange = async(crop: MediaEditorCropState) => {
     const prevCropAngle = state.crop.rotate || 0;
@@ -580,12 +580,12 @@ export const MediaEditor = () => {
     return new Promise((resolve, reject) => {
       // Create a new canvas for the resulting image
       const resultCanvas = document.createElement('canvas');
-      resultCanvas.width = filterLayerCanvas.width;
-      resultCanvas.height = filterLayerCanvas.height;
+      resultCanvas.width = imageLayerCanvas.width;
+      resultCanvas.height = imageLayerCanvas.height;
       const resultCtx = resultCanvas.getContext('2d');
 
       // Render the base layer
-      resultCtx.drawImage(filterLayerCanvas, 0, 0);
+      resultCtx.drawImage(imageLayerCanvas, 0, 0);
 
       // Render the drawing layer without transparency
       resultCtx.drawImage(drawingLayerCanvas, 0, 0);
@@ -637,8 +637,8 @@ export const MediaEditor = () => {
     return new Promise((resolve, reject) => {
       // Calculate the new dimensions of the canvas after rotation
       const radians = angle * (Math.PI / 180);
-      const width = filterLayerCanvas.width;
-      const height = filterLayerCanvas.height;
+      const width = imageLayerCanvas.width;
+      const height = imageLayerCanvas.height;
       const newWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
       const newHeight = Math.abs(width * Math.sin(radians)) + Math.abs(height * Math.cos(radians));
 
@@ -653,7 +653,7 @@ export const MediaEditor = () => {
       resultCtx.rotate(radians);
 
       // Render the base layer
-      resultCtx.drawImage(filterLayerCanvas, -width / 2, -height / 2);
+      resultCtx.drawImage(imageLayerCanvas, -width / 2, -height / 2);
 
       // Render the drawing layer without transparency
       resultCtx.drawImage(drawingLayerCanvas, -width / 2, -height / 2);
@@ -701,7 +701,6 @@ export const MediaEditor = () => {
     });
   };
 
-
   // * Tab Handlers
   const handleCropTabToggle = async() => {
     const preview = await renderMediaForCrop(0) as string;
@@ -736,14 +735,14 @@ export const MediaEditor = () => {
 
   const handleFilterUpdate = (type: FilterType) => {
     return throttle(async(value: number) => {
-      const ctx = filterLayerCanvas.getContext('2d');
+      const ctx = imageLayerCanvas.getContext('2d');
 
       const dimensions = getScaledImageSize(previewRef, {
         imageHeight: originalImage().naturalHeight,
         imageWidth: originalImage().naturalWidth
       });
 
-      ctx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+      ctx.drawImage(workareaImage, 0, 0, dimensions.width, dimensions.height);
 
       setFilterState('appliedFilters', (filters) => {
         if(value === 0) {
@@ -759,7 +758,7 @@ export const MediaEditor = () => {
 
       // FILTER PERFORMANCE
       const startTime = performance.now();
-      applyFilters(filterLayerCanvas);
+      applyFilters(imageLayerCanvas);
       const endTime = performance.now();
       const elapsedTime = endTime - startTime;
 
@@ -856,16 +855,11 @@ export const MediaEditor = () => {
 
   // * Resize management
   const handleWindowResize = debounce(() => {
-    const filterLayerCtx = filterLayerCanvas.getContext('2d');
+    const imageLayerCtx = imageLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
 
     // Save the current state of both layers
-    // let filterLayerData = null;
     const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-
-    // if(filterLayerCtx) {
-    //   filterLayerData = filterLayerCtx.getImageData(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-    // }
 
     const dimensions = getScaledImageSize(previewRef, {
       imageHeight: originalImage().naturalHeight,
@@ -875,8 +869,8 @@ export const MediaEditor = () => {
     previewContentRef.style.width = `${dimensions.width}px`;
     previewContentRef.style.height = `${dimensions.height}px`;
 
-    filterLayerCanvas.width = dimensions.width;
-    filterLayerCanvas.height = dimensions.height;
+    imageLayerCanvas.width = dimensions.width;
+    imageLayerCanvas.height = dimensions.height;
 
     drawingLayerCanvas.width = dimensions.width;
     drawingLayerCanvas.height = dimensions.height;
@@ -884,9 +878,9 @@ export const MediaEditor = () => {
     setWorkareaDimensions(dimensions);
 
     // Clear and redraw the filter layer
-    if(filterLayerCtx) {
-      filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
-      filterLayerCtx.drawImage(originalImage(), 0, 0, dimensions.width, dimensions.height);
+    if(imageLayerCtx) {
+      imageLayerCtx.clearRect(0, 0, imageLayerCanvas.width, imageLayerCanvas.height);
+      imageLayerCtx.drawImage(workareaImage, 0, 0, dimensions.width, dimensions.height);
     }
 
     // Clear and restore the drawing layer
@@ -899,11 +893,12 @@ export const MediaEditor = () => {
   // * On Mount
   onMount(() => {
     // const png = img_crop_debugger;
-    const png = main_canvas_png;
+    // const png = main_canvas_png;
+    const png = img_3840x2160_8_4;
 
     const image = new Image();
 
-    image.addEventListener('load', () => {
+    image.addEventListener('load', async() => {
       const dimensions = getScaledImageSize(previewRef, {
         imageHeight: image.naturalHeight,
         imageWidth: image.naturalWidth
@@ -912,15 +907,15 @@ export const MediaEditor = () => {
       previewContentRef.style.width = `${dimensions.width}px`;
       previewContentRef.style.height = `${dimensions.height}px`;
 
-      filterLayerCanvas.width = dimensions.width;
-      filterLayerCanvas.height = dimensions.height;
+      imageLayerCanvas.width = dimensions.width;
+      imageLayerCanvas.height = dimensions.height;
 
       drawingLayerCanvas.width = dimensions.width;
       drawingLayerCanvas.height = dimensions.height;
 
       setWorkareaDimensions(dimensions);
 
-      const ctx = filterLayerCanvas.getContext('2d');
+      const ctx = imageLayerCanvas.getContext('2d');
       ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
 
       DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
@@ -935,9 +930,8 @@ export const MediaEditor = () => {
       // });
       // stickerTabRef.appendChild(stickers);
 
+      workareaImage = await createImageBitmap(image);
       setOriginalImage(image);
-
-      // originalImageBitMap, setOriginalImageBitMap
     });
 
     image.src = png;
@@ -971,8 +965,11 @@ export const MediaEditor = () => {
         'z-index': 1000,
         'pointer-events': 'none'
       }}>
-        <p>Img natural h: {originalImage() && originalImage().naturalHeight}</p>
-        <p>Img natural w: {originalImage() && originalImage().naturalWidth}</p>
+        <p>Orig. img natural h: {originalImage() && originalImage().naturalHeight}</p>
+        <p>Orig. Img natural w: {originalImage() && originalImage().naturalWidth}</p>
+        <p>_______</p>
+        <p>Workarea img h: {workareaImage && workareaImage.height}</p>
+        <p>Workarea img w: {workareaImage && workareaImage.width}</p>
         <p>_______</p>
         <p>P.Content h: {workareaDimensions() && Math.floor(workareaDimensions().height)}</p>
         <p>P.Content w: {workareaDimensions() && Math.floor(workareaDimensions().width)}</p>
@@ -981,9 +978,10 @@ export const MediaEditor = () => {
         <p>crop w: {state.crop.width}</p>
         <p>crop x: {state.crop.x}</p>
         <p>crop y: {state.crop.y}</p>
+        <p>______</p>
         <p>crop rotate: {state.crop.rotate}</p>
         <p>crop tilt: {state.crop.tilt}</p>
-        <p>crop y: {state.crop.y}</p>
+        <p>______</p>
         <p>crop WA h: {state.crop.workareaHeight}</p>
         <p>crop WA w: {state.crop.workareaWidth}</p>
       </div>
@@ -1035,8 +1033,8 @@ export const MediaEditor = () => {
               />
 
               <canvas
-                ref={filterLayerCanvas}
-                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewFilterLayer)}
+                ref={imageLayerCanvas}
+                class={classNames(styles.MediaEditorPreviewLayer, styles.MediaEditorPreviewImageLayer)}
               />
             </div>
           </div>
