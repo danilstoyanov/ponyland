@@ -20,6 +20,7 @@ import img_200x200_1_1 from './200x200_1_1.png';
 import img_320x200_8_5 from './320x200_8_5.png';
 import img_3840x2160_8_4 from './3840x2160_8_4.png';
 import img_3840x3840_1_1 from './3840x3840_1_1.png';
+import {rotateImage} from './canvas';
 
 // import png from './sonic.jpg';
 // import png from './small.png';
@@ -446,11 +447,6 @@ export const MediaEditor = () => {
     const previewWidth = ref.clientWidth - workareaPadding;
     const previewHeight = ref.clientHeight;
 
-    // Natural dimensions of the original image
-    // ВСЕГДА НАТУРАЛЬНАЯ ШИРИНА / ВЫСОТА
-    // const originalWidth = originalImageRef.naturalWidth;
-    // const originalHeight = originalImageRef.naturalHeight;
-
     const originalWidth = imageWidth;
     const originalHeight = imageHeight;
 
@@ -484,18 +480,24 @@ export const MediaEditor = () => {
       y,
       width,
       height,
+      rotate,
       workareaHeight,
       workareaWidth
     } = crop;
 
-    const originalImageWidth = imageWidth;
-    const originalImageHeight = imageHeight;
+    let originalImageWidth = imageWidth;
+    let originalImageHeight = imageHeight;
 
-    // Вычисляем масштабные коэффициенты для ширины и высоты
+    // Swap the width and height if the rotation angle is 90 or 270 degrees
+    if(rotate % 180 !== 0) {
+      [originalImageWidth, originalImageHeight] = [originalImageHeight, originalImageWidth];
+    }
+
+    // Calculate the scale factors for width and height
     const scaleX = originalImageWidth / workareaWidth;
     const scaleY = originalImageHeight / workareaHeight;
 
-    // Пропорционально вычисляем x, y, width, height для оригинального изображения
+    // Proportionally calculate x, y, width, and height for the original image
     const scaledX = x * scaleX;
     const scaledY = y * scaleY;
     const scaledWidth = width * scaleX;
@@ -510,35 +512,15 @@ export const MediaEditor = () => {
   };
 
   // * Crop Application
-  const applyCrop = () => {
+  const applyCrop = async() => {
     const {x, y, width, height} = scaleCropToOriginalImage(state.crop, {
       imageHeight: originalImage().height,
       imageWidth: originalImage().width
     });
 
-    // crop: {
-    //   x: 0,
-    //   y: 0,
-    //   height: 0,
-    //   width: 0,
-    //   workareaHeight: 0,
-    //   workareaWidth: 0,
-    //   rotate: 0,
-    //   tilt: 0,
-    //   isFlipped: false,
-    //   isApplied: false,
-    //   aspectRatio: 'Free'
-    // },
-
-    const filterLayerCtx = filterLayerCanvas.getContext('2d');
-    const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
-
-    // Save the current state of the drawing layer
-    const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-
     const dimensions = getScaledImageSize(previewRef, {
-      imageHeight: originalImage().naturalHeight,
-      imageWidth: originalImage().naturalWidth
+      imageHeight: height,
+      imageWidth: width
     });
 
     setWorkareaDimensions(dimensions);
@@ -551,41 +533,36 @@ export const MediaEditor = () => {
     previewContentRef.style.width = `${dimensions.width}px`;
     previewContentRef.style.height = `${dimensions.height}px`;
 
-    // Apply rotation
-    const rotate = state.crop.tilt; // Assuming state.crop.rotate holds the rotation in degrees
+    const filterLayerCtx = filterLayerCanvas.getContext('2d');
 
-    // Clear and redraw the filter layer with the cropped image, adjusted for scaling and rotation
-    if(filterLayerCtx) {
-      filterLayerCtx.clearRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+    filterLayerCtx.fillRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
+    filterLayerCtx.fillStyle = 'green';
 
-      // Translate to center, rotate, then translate back
-      filterLayerCtx.save(); // Save the current canvas state
+    const originalImageBitmap = await createImageBitmap(originalImage());
 
-      filterLayerCtx.translate(dimensions.width / 2, dimensions.height / 2); // Move the origin to the center of the canvas
-      filterLayerCtx.rotate((rotate * Math.PI) / 180); // Rotate by the angle in radians
-      filterLayerCtx.drawImage(
-        originalImage(),
-        x, y, width, height, // Source rectangle
-        -dimensions.width / 2, -dimensions.height / 2, dimensions.width, dimensions.height // Destination rectangle
-      );
-
-      filterLayerCtx.restore(); // Restore the canvas state
-
-      debugger;
-
-      // Clear and restore the drawing layer
-      if(drawingLayerCtx) {
-        drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-        drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
-      }
-    }
+    const rotatedOriginalImageBitmap = await rotateImage(originalImageBitmap, state.crop.rotate);
+    filterLayerCtx.drawImage(rotatedOriginalImageBitmap, x, y, width, height, 0, 0, dimensions.width, dimensions.height);
   };
 
-  const onCropChange = (crop: MediaEditorCropState) => {
+
+  const onCropChange = async(crop: MediaEditorCropState) => {
+    const prevCropAngle = state.crop.rotate || 0;
+    const newCropAngle = crop.rotate
+
     setState('crop', prevState => ({
       ...prevState,
       ...crop
     }));
+
+    console.log('prevCropAngle: ', prevCropAngle, crop.rotate);
+
+    if(newCropAngle && prevCropAngle !== newCropAngle) {
+      // Перезапускаем кроппер
+      const preview = await renderMediaForCrop(newCropAngle) as string;
+      const img = new Image();
+      img.src = preview;
+      setCropPreview(img);
+    }
 
     // crop: {
     //   x: 0,
@@ -599,7 +576,7 @@ export const MediaEditor = () => {
   };
 
   // * Canvas Renderer
-  const renderMedia = () => {
+  const renderMedia = (angle: number) => {
     return new Promise((resolve, reject) => {
       // Create a new canvas for the resulting image
       const resultCanvas = document.createElement('canvas');
@@ -614,35 +591,35 @@ export const MediaEditor = () => {
       resultCtx.drawImage(drawingLayerCanvas, 0, 0);
 
       // Render stickers
-      state.entities.forEach(entity => {
-        if(isStickerEntity(entity)) {
-          resultCtx.drawImage(
-            entity.node, // Assuming `node` is an image element
-            entity.x,
-            entity.y,
-            entity.width === 'auto' ? 100 : entity.width,
-            entity.height === 'auto' ? 100 : entity.height
-          );
-        }
-      });
+      // state.entities.forEach(entity => {
+      //   if(isStickerEntity(entity)) {
+      //     resultCtx.drawImage(
+      //       entity.node, // Assuming `node` is an image element
+      //       entity.x,
+      //       entity.y,
+      //       entity.width === 'auto' ? 100 : entity.width,
+      //       entity.height === 'auto' ? 100 : entity.height
+      //     );
+      //   }
+      // });
 
       // Render text nodes
-      state.entities.forEach(entity => {
-        if(isTextEntity(entity)) {
-          resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
-          resultCtx.fillStyle = entity.color;
-          resultCtx.textAlign = entity.textAlign;
-          resultCtx.save();
-          resultCtx.translate(entity.x + (entity as any).width / 2, entity.y + (entity as any).height / 2);
-          resultCtx.rotate((entity.rotate * Math.PI) / 180);
-          resultCtx.fillText(
-            'Your Text Here', // Replace with the actual text if available in the entity object
-            -entity.width / 2,
-            entity.fontSize / 2
-          );
-          resultCtx.restore();
-        }
-      });
+      // state.entities.forEach(entity => {
+      //   if(isTextEntity(entity)) {
+      //     resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+      //     resultCtx.fillStyle = entity.color;
+      //     resultCtx.textAlign = entity.textAlign;
+      //     resultCtx.save();
+      //     resultCtx.translate(entity.x + (entity as any).width / 2, entity.y + (entity as any).height / 2);
+      //     resultCtx.rotate((entity.rotate * Math.PI) / 180);
+      //     resultCtx.fillText(
+      //       'Your Text Here', // Replace with the actual text if available in the entity object
+      //       -entity.width / 2,
+      //       entity.fontSize / 2
+      //     );
+      //     resultCtx.restore();
+      //   }
+      // });
 
       // Convert canvas to blob and resolve with the blob URL
       resultCanvas.toBlob((blob) => {
@@ -656,9 +633,78 @@ export const MediaEditor = () => {
     });
   };
 
+  const renderMediaForCrop = (angle: number) => {
+    return new Promise((resolve, reject) => {
+      // Calculate the new dimensions of the canvas after rotation
+      const radians = angle * (Math.PI / 180);
+      const width = filterLayerCanvas.width;
+      const height = filterLayerCanvas.height;
+      const newWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
+      const newHeight = Math.abs(width * Math.sin(radians)) + Math.abs(height * Math.cos(radians));
+
+      // Create a new canvas for the resulting image
+      const resultCanvas = document.createElement('canvas');
+      resultCanvas.width = newWidth;
+      resultCanvas.height = newHeight;
+      const resultCtx = resultCanvas.getContext('2d');
+
+      // Translate and rotate the context
+      resultCtx.translate(newWidth / 2, newHeight / 2);
+      resultCtx.rotate(radians);
+
+      // Render the base layer
+      resultCtx.drawImage(filterLayerCanvas, -width / 2, -height / 2);
+
+      // Render the drawing layer without transparency
+      resultCtx.drawImage(drawingLayerCanvas, -width / 2, -height / 2);
+
+      // Render stickers
+      // state.entities.forEach(entity => {
+      //   if(isStickerEntity(entity)) {
+      //     resultCtx.drawImage(
+      //       entity.node, // Assuming `node` is an image element
+      //       entity.x - width / 2,
+      //       entity.y - height / 2,
+      //       entity.width === 'auto' ? 100 : entity.width,
+      //       entity.height === 'auto' ? 100 : entity.height
+      //     );
+      //   }
+      // });
+
+      // Render text nodes
+      // state.entities.forEach(entity => {
+      //   if(isTextEntity(entity)) {
+      //     resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+      //     resultCtx.fillStyle = entity.color;
+      //     resultCtx.textAlign = entity.textAlign;
+      //     resultCtx.save();
+      //     resultCtx.translate(entity.x - width / 2 + (entity as any).width / 2, entity.y - height / 2 + (entity as any).height / 2);
+      //     resultCtx.rotate((entity.rotate * Math.PI) / 180);
+      //     resultCtx.fillText(
+      //       'Your Text Here', // Replace with the actual text if available in the entity object
+      //       -entity.width / 2,
+      //       entity.fontSize / 2
+      //     );
+      //     resultCtx.restore();
+      //   }
+      // });
+
+      // Convert canvas to blob and resolve with the blob URL
+      resultCanvas.toBlob((blob) => {
+        if(blob) {
+          const data = readBlobAsDataURL(blob);
+          resolve(data);
+        } else {
+          reject(new Error('Failed to create blob'));
+        }
+      }, 'image/png');
+    });
+  };
+
+
   // * Tab Handlers
   const handleCropTabToggle = async() => {
-    const preview = await renderMedia() as string;
+    const preview = await renderMediaForCrop(0) as string;
 
     const img = new Image();
     img.src = preview;
@@ -1357,7 +1403,7 @@ export const MediaEditor = () => {
 
                     <RowTsx title='Add text' clickable={addTextEntity} />
                     <RowTsx title='Remove text' clickable={() => true} />
-                    <RowTsx title='Render result' clickable={renderMedia} />
+                    <RowTsx title='Render result' clickable={() => true} />
 
                     <div class={styles.MediaEditorSidebarSectionHeader}>
                       Font
@@ -1447,7 +1493,7 @@ export const MediaEditor = () => {
                   <h1>STICKERS</h1>
                   <button
                     style={{padding: '16px', background: 'blue'}}
-                    onClick={renderMedia}
+                    // onClick={renderMedia}
                   >
                     RENDER IMAGE
                   </button>
