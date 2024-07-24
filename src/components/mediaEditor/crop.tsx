@@ -214,8 +214,6 @@ export const Crop = (props: CropPops) => {
     containerWrapperRef.style.width = width + 'px';
     containerWrapperRef.style.height = height + 'px';
 
-    console.log('updateCropSize: ', width, height);
-
     handleCropChange({width, height});
   }
 
@@ -392,11 +390,12 @@ export const Crop = (props: CropPops) => {
     updateContainer(0, 0); // Reset the container position to the top-left corner
   };
 
-  // Usage of the method
   createEffect(() => {
     adjustCropSizeToAspectRatio(props.state.aspectRatio);
   });
 
+
+  // MAIN FUNCTION FOR CROP AREA RESIZE
   const handleCropAreaResize = () => {
     const topRightNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-right]');
     const topLeftNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-left]');
@@ -449,60 +448,59 @@ export const Crop = (props: CropPops) => {
             left = initialLeft + (e.clientX - startX);
           }
 
-          // Ensure minimum size
-          if(width < minimum_size) width = minimum_size;
-          if(height < minimum_size) height = minimum_size;
+          width = Math.max(width, minimum_size);
+          height = Math.max(height, minimum_size);
 
-          // Respect the selected aspect ratio
-          switch(props.state.aspectRatio) {
-            case 'Free':
-              break; // Allow free resizing
-            case 'Original':
-              const originalAspectRatio = props.image.naturalWidth / props.image.naturalHeight;
+          const aspectRatio = props.state.aspectRatio;
+          if(aspectRatio === 'Original') {
+            const originalAspectRatio = props.image.naturalWidth / props.image.naturalHeight;
+            if(width / height > originalAspectRatio) {
+              width = height * originalAspectRatio;
+            } else {
               height = width / originalAspectRatio;
-              break;
-            case 'Square':
-              height = width; // Keep width and height equal for square aspect ratio
-              break;
-            default:
-              const [aspectWidth, aspectHeight] = props.state.aspectRatio.split(':').map(Number);
-              if(aspectWidth && aspectHeight) {
-                if(width / aspectWidth > height / aspectHeight) {
-                  width = height * (aspectWidth / aspectHeight);
-                } else {
-                  height = width * (aspectHeight / aspectWidth);
-                }
+            }
+          } else if(aspectRatio === 'Square') {
+            height = width;
+          } else if(aspectRatio && aspectRatio.includes(':')) {
+            const [aspectWidth, aspectHeight] = aspectRatio.split(':').map(Number);
+            if(aspectWidth && aspectHeight) {
+              if(width / aspectWidth > height / aspectHeight) {
+                width = height * (aspectWidth / aspectHeight);
+              } else {
+                height = width * (aspectHeight / aspectWidth);
               }
-              break;
+            }
           }
-
-          // Update the cropper dimensions and position
-          containerRef.style.width = width + 'px';
-          containerWrapperRef.style.width = width + 'px';
-          containerRef.style.height = height + 'px';
-          containerWrapperRef.style.height = height + 'px';
-          containerRef.style.left = left + 'px';
-          containerWrapperRef.style.left = left + 'px';
-          containerRef.style.top = top + 'px';
-          containerWrapperRef.style.top = top + 'px';
 
           const maxWidth = overlayImageRef.offsetWidth;
           const maxHeight = overlayImageRef.offsetHeight;
+          width = Math.min(width, maxWidth);
+          height = Math.min(height, maxHeight);
 
-          // Ensure cropper stays within image bounds
-          if(width > maxWidth) {
-            width = maxWidth;
-            containerRef.style.width = width + 'px';
-            containerWrapperRef.style.width = width + 'px';
+          containerRef.style.width = width + 'px';
+          containerRef.style.height = height + 'px';
+          containerWrapperRef.style.width = width + 'px';
+          containerWrapperRef.style.height = height + 'px';
+
+          if(action === 'top-left') {
+            left = initialLeft + (initialWidth - width);
+            top = initialTop + (initialHeight - height);
+          } else if(action === 'top-right') {
+            left = initialLeft;
+            top = initialTop + (initialHeight - height);
+          } else if(action === 'bottom-left') {
+            left = initialLeft + (initialWidth - width);
+            top = initialTop;
+          } else if(action === 'bottom-right') {
+            left = initialLeft;
+            top = initialTop;
           }
 
-          if(height > maxHeight) {
-            height = maxHeight;
-            containerRef.style.height = height + 'px';
-            containerWrapperRef.style.height = height + 'px';
-          }
+          containerRef.style.left = left + 'px';
+          containerRef.style.top = top + 'px';
+          containerWrapperRef.style.left = left + 'px';
+          containerWrapperRef.style.top = top + 'px';
 
-          // Update the crop image position
           updateCropImage(left, top);
           handleCropChange({width, height});
         }
@@ -517,6 +515,7 @@ export const Crop = (props: CropPops) => {
       });
     });
   };
+
 
   const handleRotationAngleUpdate = (value: number) => {
     const theta = value * (Math.PI / 180);

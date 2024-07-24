@@ -566,8 +566,6 @@ export const MediaEditor = () => {
       ...crop
     }));
 
-    console.log('prevCropAngle: ', prevCropAngle, crop.rotate);
-
     if(newCropAngle && prevCropAngle !== newCropAngle) {
       // Перезапускаем кроппер
       const preview = await renderMediaForCrop(newCropAngle) as string;
@@ -575,16 +573,6 @@ export const MediaEditor = () => {
       img.src = preview;
       setCropPreview(img);
     }
-
-    // crop: {
-    //   x: 0,
-    //   y: 0,
-    //   height: 0,
-    //   width: 0,
-    //   rotate: 0,
-    //   isFlipped: false,
-    //   isApplied: false
-    // }
   };
 
   // * Canvas Renderer
@@ -911,7 +899,7 @@ export const MediaEditor = () => {
   // * On Mount
   onMount(() => {
     // const png = img_crop_debugger;
-    const png = img_3840x2160_8_4;
+    const png = main_canvas_png;
 
     const image = new Image();
 
