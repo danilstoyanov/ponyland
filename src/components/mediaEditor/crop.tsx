@@ -35,8 +35,8 @@ const CropBar = (props: Partial<CropBarProps>) => {
   let anchorPointRef: HTMLDivElement;
 
   function generateDegreesArray() {
-    const originalStart = -180;
-    const originalEnd = 180;
+    const originalStart = -165;
+    const originalEnd = 165;
     const expansion = 15;
     const step = 15;
 
@@ -72,9 +72,6 @@ const CropBar = (props: Partial<CropBarProps>) => {
   const updateActiveDegree = () => {
     const degreeElements = degreeBarRef.querySelectorAll('[data-degree]');
     const anchorPointRect = anchorPointRef.getBoundingClientRect();
-    const degreeBarRect = degreeBarRef.getBoundingClientRect();
-
-    // Calculate the center position of the anchor point
     const anchorPointCenterX = anchorPointRect.left + (anchorPointRect.width / 2);
 
     let activeElement = null;
@@ -82,18 +79,15 @@ const CropBar = (props: Partial<CropBarProps>) => {
     degreeElements.forEach(element => {
       const elementRect = element.getBoundingClientRect();
 
-      // Check if the anchor point is within the element's bounding box
       if(anchorPointCenterX >= elementRect.left && anchorPointCenterX <= elementRect.right) {
         activeElement = element;
       }
     });
 
-    // Remove 'active' class from all elements
     degreeElements.forEach(element => {
       element.classList.remove('active');
     });
 
-    // Add 'active' class to the active element, if found
     if(activeElement) {
       (activeElement as HTMLElement).classList.add('active');
     }
@@ -109,16 +103,21 @@ const CropBar = (props: Partial<CropBarProps>) => {
 
       const BACKGROUND_POSITION_OFFSET = 8;
       const deltaX = event.clientX - initialMouseX();
+      const maxScrollLeft = degreeBarRef.scrollWidth - degreeBarRef.clientWidth;
       degreeBarRef.scrollLeft = initialScrollLeft() - deltaX;
-      degreeBarRef.style.backgroundPositionX = ((initialScrollLeft() - deltaX - BACKGROUND_POSITION_OFFSET) * -1) + 'px';
-      updateCurrentAngle(); // Update the current angle while dragging
+
+      if(degreeBarRef.scrollLeft !== 0 && degreeBarRef.scrollLeft < maxScrollLeft) {
+        degreeBarRef.style.backgroundPositionX = ((initialScrollLeft() - deltaX - BACKGROUND_POSITION_OFFSET) * -1) + 'px';
+      }
+
+      updateCurrentAngle();
     };
 
     const onMouseUp = () => {
       setDragging(false);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
-      updateCurrentAngle(); // Ensure the current angle is updated after dragging stops
+      updateCurrentAngle();
     };
 
     document.addEventListener('mousemove', onMouseMove);
