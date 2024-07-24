@@ -66,7 +66,6 @@ const CropBar = (props: Partial<CropBarProps>) => {
     const angleRange = 180; // Full range from -90 to 90
     const angle = (ratio * angleRange) - 90;
     setCurrentAngle(Math.round(angle));
-
     updateActiveDegree();
   };
 
@@ -77,13 +76,26 @@ const CropBar = (props: Partial<CropBarProps>) => {
     });
 
     const angle = currentAngle();
+
+    // Find the closest degree element and make it active
+    let closestElement = null;
+    let closestDistance = Infinity;
+
     degreeElements.forEach(element => {
       const elementDegree = parseInt(element.getAttribute('data-degree')!, 10);
-      if(Math.abs(elementDegree - angle) <= 2) {
-        element.classList.add('active');
+      const distance = Math.abs(elementDegree - angle);
+
+      if(distance < closestDistance) {
+        closestDistance = distance;
+        closestElement = element;
       }
     });
+
+    if(closestElement && closestDistance <= 2) {
+      (closestElement as HTMLElement).classList.add('active');
+    }
   };
+
 
   const onMouseDown = (event: MouseEvent) => {
     setDragging(true);
@@ -126,6 +138,12 @@ const CropBar = (props: Partial<CropBarProps>) => {
       }
     });
   });
+
+  createEffect(() => {
+    if(props.onAngleChange) {
+      props.onAngleChange(currentAngle());
+    }
+  })
 
   return (
     <div class={styles.MediaEditorCropBarContainer}>
@@ -513,58 +531,25 @@ export const Crop = (props: CropPops) => {
     handleCropChange({tilt: value})
   };
 
-  const updateCropLayoutOnRotate = (angle: number) => {
-    console.log('angle: ', angle);
+  const updateCropLayout = () => {
+    const transformRule = props.state.isFlipped ? 'scaleX(-1)' : '';
 
-    // cropWorkAreaRef.style.transform = `rotate(${angle}deg)`;
-    // cropWorkAreaRef.style.backgroundColor = 'green';
+    overlayImageRef.style.transform = transformRule;
+    cropImageRef.style.transform = transformRule;
   };
 
   const handleRotateClick = () => {
-    // Get the current transform property
-    // Apply the new transformation
-    // overlayImageRef.style.transform = `rotate(${currentAngle}deg) scaleX(${flipX})`;
-    // cropImageRef.style.transform = `rotate(${currentAngle}deg) scaleX(${flipX})`;
-
     handleCropChange({rotate: props.state.rotate + 90});
-    updateCropLayoutOnRotate
   };
 
   const handleFlipClick = () => {
-    // Get the current transform property
-    const overlayTransform = overlayImageRef.style.transform;
-    const cropTransform = cropImageRef.style.transform;
-
-    // Initialize variables for rotation and flip
-    let currentAngle = 0;
-    let flipX = 1;
-
-    // Extract the current angle from the transform property
-    if(overlayTransform.includes('rotate(')) {
-      const angleMatch = overlayTransform.match(/rotate\(([^)]+)\)/);
-      if(angleMatch) {
-        currentAngle = parseFloat(angleMatch[1]);
-      }
-    } else if(cropTransform.includes('rotate(')) {
-      const angleMatch = cropTransform.match(/rotate\(([^)]+)\)/);
-      if(angleMatch) {
-        currentAngle = parseFloat(angleMatch[1]);
-      }
+    if(props.state.isFlipped) {
+      handleCropChange({isFlipped: false})
+    } else {
+      handleCropChange({isFlipped: true})
     }
 
-    // Extract the current flip state
-    if(overlayTransform.includes('scaleX(-1)')) {
-      flipX = -1;
-    } else if(cropTransform.includes('scaleX(-1)')) {
-      flipX = -1;
-    }
-
-    // Toggle the flip effect
-    flipX = flipX === 1 ? -1 : 1;
-
-    // Apply the new transformation
-    overlayImageRef.style.transform = `rotate(${currentAngle}deg) scaleX(${flipX})`;
-    cropImageRef.style.transform = `rotate(${currentAngle}deg) scaleX(${flipX})`;
+    updateCropLayout();
   };
 
   return (

@@ -20,7 +20,7 @@ import img_200x200_1_1 from './200x200_1_1.png';
 import img_320x200_8_5 from './320x200_8_5.png';
 import img_3840x2160_8_4 from './3840x2160_8_4.png';
 import img_3840x3840_1_1 from './3840x3840_1_1.png';
-import {rotateImage} from './canvas';
+import {rotateImage, flipImage, tiltImage} from './canvas';
 
 // import png from './sonic.jpg';
 // import png from './small.png';
@@ -108,8 +108,8 @@ export interface MediaEditorCropState {
   workareaWidth: number;
   tilt: number; // tilt is angle we can choose on ruler
   rotate: number; // rotate is angle we can apply with button
-  isFlipped: false;
-  isApplied: false;
+  isFlipped: boolean;
+  isApplied: boolean;
   aspectRatio: CropAspectRatio;
 }
 
@@ -525,11 +525,12 @@ export const MediaEditor = () => {
 
     setWorkareaDimensions(dimensions);
 
-    // Update canvas dimensions
     filterLayerCanvas.width = dimensions.width;
     filterLayerCanvas.height = dimensions.height;
+
     drawingLayerCanvas.width = dimensions.width;
     drawingLayerCanvas.height = dimensions.height;
+
     previewContentRef.style.width = `${dimensions.width}px`;
     previewContentRef.style.height = `${dimensions.height}px`;
 
@@ -538,10 +539,21 @@ export const MediaEditor = () => {
     filterLayerCtx.fillRect(0, 0, filterLayerCanvas.width, filterLayerCanvas.height);
     filterLayerCtx.fillStyle = 'green';
 
-    const originalImageBitmap = await createImageBitmap(originalImage());
+    let cropImageBitmap = await createImageBitmap(originalImage());
 
-    const rotatedOriginalImageBitmap = await rotateImage(originalImageBitmap, state.crop.rotate);
-    filterLayerCtx.drawImage(rotatedOriginalImageBitmap, x, y, width, height, 0, 0, dimensions.width, dimensions.height);
+    if(state.crop.rotate !== 0) {
+      cropImageBitmap = await rotateImage(cropImageBitmap, state.crop.rotate);
+    }
+
+    if(state.crop.isFlipped) {
+      cropImageBitmap = await flipImage(cropImageBitmap, 'horizontal');
+    }
+
+    if(state.crop.tilt !== 0) {
+      cropImageBitmap = await tiltImage(cropImageBitmap, state.crop.tilt);
+    }
+
+    filterLayerCtx.drawImage(cropImageBitmap, x, y, width, height, 0, 0, dimensions.width, dimensions.height);
   };
 
 
