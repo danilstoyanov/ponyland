@@ -137,7 +137,7 @@ const createRandomColorImage = () => {
   return img;
 }
 
-const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string }) => {
+const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string; style?: Record<string, string> }) => {
   const [local, others] = splitProps(props, ['label']);
   const [currentValue, setCurrentValue] = createSignal(props.value);
 
@@ -155,12 +155,19 @@ const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string })
         <div class={styles.MediaEditorRangeSelectorLegendLabel}>
           {local.label}
         </div>
-        <div class={classNames(styles.MediaEditorRangeSelectorLegendValue, currentValue() === props.value && styles.MediaEditorRangeSelectorLegendValueDefault)}>
+        <div classList={{
+          [styles.MediaEditorRangeSelectorLegendValue]: true,
+          [styles.MediaEditorRangeSelectorLegendValueDefault]: currentValue() === props.value
+        }}>
           {currentValue()}
         </div>
       </div>
 
-      <div class={styles.MediaEditorRangeSelectorTrack}>
+      <div classList={{
+        [styles.MediaEditorRangeSelectorTrack]: true,
+        [styles.MediaEditorRangeSelectorTrackInitial]: others.min === currentValue(),
+        [styles.MediaEditorRangeSelectorTrackFilled]: others.max === currentValue()
+      }}>
         <RangeSelectorTsx {...others} onScrub={handleValueChange} />
       </div>
     </div>
@@ -1231,6 +1238,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     <div class={styles.MediaEditor}>
 
       <div style={{
+        'display': 'none',
         'position': 'absolute',
         'top': 0,
         'left': 0,
@@ -1450,7 +1458,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleVignetteUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Sharp"
+                      label="Sharpen"
                       min={0}
                       max={1}
                       step={0.01}
@@ -1606,7 +1614,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       <MediaEditorColorPicker onChange={(color) => setTextEntityFontColor(color.rgba)} />
                     </div>
 
-                    <div class={styles.MediaEditorSidebarTabsContentTabPanelTextRow}>
+                    <div class={classNames(styles.MediaEditorSidebarTabsContentTabPanelTextRow, styles.MediaEditorSidebarTabsContentTabPanelTextSettings)}>
                       <div class={styles.MediaEditorSidebarTabsContentTabPanelTextCol}>
                         <ButtonIconTsx
                           icon="text_align_left"
@@ -1666,33 +1674,41 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       </div>
                     </div>
 
-                    <MediaEditorRangeSelector
-                      label="Size"
-                      min={10}
-                      max={64}
-                      step={1}
-                      value={16}
-                      onScrub={(value) => setTextEntityFontSize(value)}
-                    />
-
                     <div class={styles.MediaEditorSidebarSectionHeader}>
-                      Controls
+                      <MediaEditorRangeSelector
+                        label="Size"
+                        min={10}
+                        max={64}
+                        step={1}
+                        value={16}
+                        onScrub={(value) => setTextEntityFontSize(value)}
+                        style={{
+                          '--color': `${(state.entities[state.selectedEntityId] as TextEntityType)?.color ?? 'var(--primary-color)'}`
+                        }}
+                      />
                     </div>
 
-                    <RowTsx title='Add text' clickable={addTextEntity} />
-                    <RowTsx title='Remove text' clickable={() => true} />
-                    <RowTsx title='Render result' clickable={() => true} />
+                    <div>
+                      <div class={styles.MediaEditorSidebarSectionHeader}>
+                        Controls
+                      </div>
 
-                    <div class={styles.MediaEditorSidebarSectionHeader}>
-                      Font
+                      <RowTsx title='Add text' clickable={addTextEntity} />
+                      <RowTsx title='Remove text' clickable={() => true} />
+                      <RowTsx title='Render result' clickable={() => true} />
                     </div>
 
-                    <RowTsx title='Roboto' clickable={() => setTextEntityFont('Roboto')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowRoboto]} />
-                    <RowTsx title='Courier New' clickable={() => setTextEntityFont('Courier New')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowCourierNew]} />
-                    <RowTsx title='Georgia' clickable={() => setTextEntityFont('Georgia')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowGeorgia]} />
-                    <RowTsx title='Times New Roman' clickable={() => setTextEntityFont('Times New Roman')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowTimesNewRoman]} />
-                    <RowTsx title='Trebuchet MS' clickable={() => setTextEntityFont('Trebuchet MS')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowTrebuchetMS]} />
-                    <RowTsx title='Comic Sans' clickable={() => setTextEntityFont('Comic Sans MS')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowComicSans]} />
+                    <div>
+                      <div class={styles.MediaEditorSidebarSectionHeader}>
+                        Font
+                      </div>
+                      <RowTsx title='Roboto' clickable={() => setTextEntityFont('Roboto')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowRoboto]} />
+                      <RowTsx title='Courier New' clickable={() => setTextEntityFont('Courier New')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowCourierNew]} />
+                      <RowTsx title='Georgia' clickable={() => setTextEntityFont('Georgia')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowGeorgia]} />
+                      <RowTsx title='Times New Roman' clickable={() => setTextEntityFont('Times New Roman')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowTimesNewRoman]} />
+                      <RowTsx title='Trebuchet MS' clickable={() => setTextEntityFont('Trebuchet MS')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowTrebuchetMS]} />
+                      <RowTsx title='Comic Sans' clickable={() => setTextEntityFont('Comic Sans MS')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowComicSans]} />
+                    </div>
                   </div>
                 </div>
               )}

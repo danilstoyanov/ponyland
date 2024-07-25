@@ -201,6 +201,8 @@
           height: 100%;
           padding-inline: 8px;
           padding-block: 16px;
+          display: flex;
+          flex-direction: column;
 
           &Row {
             display: flex;
@@ -209,6 +211,10 @@
 
           &Col {
             display: flex;
+          }
+
+          &Settings {
+            padding-top: 16px;
           }
         }
       };
@@ -220,6 +226,7 @@
     flex-direction: column;
     gap: 22px;
     height: 50px;
+    width: 100%;
 
     &Legend {
       display: flex;
@@ -245,12 +252,16 @@
       }
     }
 
-    &Track {
-      // padding-inline: 10px;
+    &Track :global(.progress-line) {
+      --thumb-size: 20px;
+    }
 
-      :global(.progress-line) {
-        --thumb-size: 20px;
-      }
+    &TrackInitial :global(.progress-line__filled:not(.progress-line__loaded):after) {
+      transform: translateX(calc(var(--thumb-size) / 1 * var(--reflect))) scale(1);
+    }
+
+    &TrackFilled :global(.progress-line__filled:not(.progress-line__loaded):after) {
+      transform: translateX(calc(var(--thumb-size) / 6 * var(--reflect))) scale(1);
     }
   }
 
@@ -430,7 +441,8 @@
   }
 
   &Controls {
-    --secondary-text-color: #fff;
+    
+    
     bottom: 0;
     position: absolute;
     display: flex;
@@ -726,11 +738,12 @@
   width: 100%;
 }
 
-// cropper-dashed dashed-v
-// cropper-dashed dashed-h
-
 .MediaEditorRow.Active {
   background-color: var(--light-secondary-text-color);
+}
+
+.MediaEditorRow:global(.row-with-padding .row-icon) {
+  color: var(--primary-text-color);
 }
 
 .CropCorner {
