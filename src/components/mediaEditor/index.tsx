@@ -20,7 +20,7 @@ import img_200x200_1_1 from './200x200_1_1.png';
 import img_320x200_8_5 from './320x200_8_5.png';
 import img_3840x2160_8_4 from './3840x2160_8_4.png';
 import img_3840x3840_1_1 from './3840x3840_1_1.png';
-import {rotateImage, flipImage, tiltImage} from './canvas';
+import {rotateImage, flipImage, tiltImage, changeImageBitmapSize} from './canvas';
 
 // import png from './sonic.jpg';
 // import png from './small.png';
@@ -51,6 +51,7 @@ import resizeableImage from '../../lib/cropper';
 import ResizeableImage from './resizeableImage';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
+import wrapSticker from '../wrappers/sticker';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -432,7 +433,7 @@ export const MediaEditor = () => {
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
@@ -634,7 +635,7 @@ export const MediaEditor = () => {
   };
 
   const renderMediaForCrop = (angle: number) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async(resolve, reject) => {
       // Calculate the new dimensions of the canvas after rotation
       const radians = angle * (Math.PI / 180);
       const width = imageLayerCanvas.width;
@@ -652,11 +653,22 @@ export const MediaEditor = () => {
       resultCtx.translate(newWidth / 2, newHeight / 2);
       resultCtx.rotate(radians);
 
-      // Render the base layer
-      resultCtx.drawImage(imageLayerCanvas, -width / 2, -height / 2);
+      const originalImageBitmap = await createImageBitmap(originalImage());
+      const resizedWorkareaImage = await changeImageBitmapSize(originalImageBitmap, width, height);
+
+      console.log('resizedWorkareaImage: ', resizedWorkareaImage);
+      console.log('imageLayerCanvas: ', imageLayerCanvas.width, imageLayerCanvas.height);
+
+      resultCtx.drawImage(
+        resizedWorkareaImage,
+        -width / 2,
+        -height / 2,
+        resizedWorkareaImage.width,
+        resizedWorkareaImage.height
+      );
 
       // Render the drawing layer without transparency
-      resultCtx.drawImage(drawingLayerCanvas, -width / 2, -height / 2);
+      // resultCtx.drawImage(drawingLayerCanvas, -width / 2, -height / 2);
 
       // Render stickers
       // state.entities.forEach(entity => {
@@ -800,7 +812,7 @@ export const MediaEditor = () => {
     setState({selectedEntityId: id});
   };
 
-  const addStickerEntity = (target: any) => {
+  const addStickerEntity = (container: StickerEntityType['container']) => {
     setState('entities', state.entities.length, {
       id: state.entities.length,
       x: 100,
@@ -809,7 +821,7 @@ export const MediaEditor = () => {
       height: 200,
       rotate: 0,
       type: 'sticker',
-      node: target.children[0].cloneNode(true)
+      container
     });
   };
 
@@ -921,23 +933,213 @@ export const MediaEditor = () => {
       DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
       DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
 
-      // appDownloadManager.construct(rootScope.managers);
+      appDownloadManager.construct(rootScope.managers);
+
       // const stickers = new StickersTab(rootScope.managers);
       // stickers.init();
+
       // const stickers = EmoticonsDropdown.getElement();
-      // EmoticonsDropdown.init((target: any) => {
-      //   addStickerEntity(target);
-      // });
+      // EmoticonsDropdown.init(
+      //   {
+      //     handleStickerClick: async(target: any) => {
+      //       console.log('target: ', target.dataset.docId);
+
+      //       const doc = await rootScope.managers.appDocsManager.getDoc(target.dataset.docId);
+
+      //       console.log('doc: ', doc);
+
+      //       const wrapper = document.createElement('div');
+
+      //       const ret = wrapSticker({
+      //         doc,
+      //         div: wrapper,
+      //         loop: true,
+      //         play: true,
+      //         withThumb: false,
+      //         loopEffect: true
+      //       });
+
+      //       // Получаем документ, заворачиваем стикер, добавляем энтити
+
+      //       // rootScope.managers.appStickersManager
+
+
+      //       // const result = await rootScope.managers.acknowledged.appEmojiManager.getCustomEmojiDocument(docId);
+      //       // if(!result.cached) onCacheStatus?.(false);
+      //       // const doc = await result.result;
+
+      //       addStickerEntity(wrapper);
+      //     }
+      //   }
+      // );
       // stickerTabRef.appendChild(stickers);
 
-      workareaImage = await createImageBitmap(image);
-      setOriginalImage(image);
+      // workareaImage = await createImageBitmap(image);
+      // setOriginalImage(image);
     });
 
     image.src = png;
 
     window.addEventListener('resize', handleWindowResize);
   });
+
+  const downloadStickerFrames = async() => {
+    const doc = await rootScope.managers.appDocsManager.getDoc('1451390786439479394');
+
+    console.log('doc: ', doc);
+
+    const wrapper = document.createElement('div');
+
+    const ret = wrapSticker({
+      doc,
+      div: wrapper,
+      loop: true,
+      play: true,
+      withThumb: false,
+      loopEffect: true
+    });
+
+    addStickerEntity(wrapper);
+
+    const captureFrames = (stickerCanvas: HTMLCanvasElement, duration: number, fps: number) => {
+      return new Promise<ImageBitmap[]>((resolve) => {
+        const capturedFrames: ImageBitmap[] = [];
+        let framesCaptured = 0;
+        const captureInterval = 1000 / fps; // Interval in milliseconds
+
+        const captureFrame = () => {
+          if(framesCaptured >= (duration / captureInterval)) {
+            resolve(capturedFrames);
+            return;
+          }
+          stickerCanvas.toBlob((blob) => {
+            createImageBitmap(blob).then((bitmap) => {
+              capturedFrames.push(bitmap);
+              framesCaptured++;
+              setTimeout(captureFrame, captureInterval);
+            });
+          });
+        };
+
+        captureFrame();
+      });
+    };
+
+    const createVideoFromFrames = (frames: ImageBitmap[], fps: number) => {
+      return new Promise<Blob>((resolve) => {
+        // Create a canvas and context
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        if(!context) {
+          throw new Error('Failed to get 2D context');
+        }
+
+        canvas.width = frames[0].width;
+        canvas.height = frames[0].height;
+
+        const stream = canvas.captureStream();
+        const recordedBlobs: Blob[] = [];
+        const options = {mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'};
+        let mediaRecorder: MediaRecorder;
+
+        try {
+          mediaRecorder = new MediaRecorder(stream, options);
+        } catch(e0) {
+          console.error('Exception while creating MediaRecorder:', e0);
+          return;
+        }
+
+        mediaRecorder.onstop = (event) => {
+          console.log('Recorder stopped:', event);
+          const superBuffer = new Blob(recordedBlobs, {type: 'video/mp4'});
+          resolve(superBuffer);
+        };
+
+        mediaRecorder.ondataavailable = (event) => {
+          if(event.data && event.data.size > 0) {
+            recordedBlobs.push(event.data);
+          }
+        };
+
+        mediaRecorder.start();
+
+        let frameIndex = 0;
+        const drawNextFrame = () => {
+          if(frameIndex >= frames.length) {
+            mediaRecorder.stop();
+            return;
+          }
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(frames[frameIndex], 0, 0);
+          frameIndex++;
+          setTimeout(drawNextFrame, 1000 / fps);
+        };
+
+        drawNextFrame();
+      });
+    };
+
+    setTimeout(() => {
+      const stickerEntity = state.entities[0] as StickerEntityType;
+      const stickerCanvas = stickerEntity.container.querySelector('canvas');
+      const imageLayerCanvasCtx = imageLayerCanvas.getContext('2d');
+
+      if(stickerCanvas && imageLayerCanvasCtx) {
+        captureFrames(stickerCanvas, 3000, 60).then((capturedFrames) => {
+          const framesWithBackgroundPromises = capturedFrames.map((frame) => {
+            return new Promise<ImageBitmap>((resolve) => {
+              const tempCanvas = document.createElement('canvas');
+              tempCanvas.width = imageLayerCanvasCtx.canvas.width;
+              tempCanvas.height = imageLayerCanvasCtx.canvas.height;
+              const tempCtx = tempCanvas.getContext('2d');
+
+              if(tempCtx) {
+                // Draw the background image from the imageLayerCanvasCtx
+                tempCtx.drawImage(imageLayerCanvasCtx.canvas, 0, 0);
+                // Draw the current frame on top
+                tempCtx.drawImage(frame, 0, 0);
+                // Convert the result to an ImageBitmap
+                tempCanvas.toBlob((blob) => {
+                  createImageBitmap(blob).then((bitmap) => {
+                    resolve(bitmap);
+                  });
+                });
+              }
+            });
+          });
+
+          Promise.all(framesWithBackgroundPromises).then((framesWithBackground) => {
+            createVideoFromFrames(framesWithBackground, 60).then((videoBlob) => {
+              const url = window.URL.createObjectURL(videoBlob);
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = url;
+              a.download = 'recorded.mp4';
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+              }, 100);
+            });
+
+            console.log('Frames with background:', framesWithBackground);
+            console.log('stickerEntity.container: ', stickerEntity.container);
+            console.log('stickerCanvas: ', stickerCanvas);
+
+            // Add any necessary cleanup code here
+            cleanup();
+          });
+        });
+      }
+    }, 100);
+
+    const cleanup = () => {
+      // Reset any necessary state or variables here
+      console.log('Cleanup completed');
+    };
+  }
 
   onCleanup(() => {
     window.removeEventListener('resize', handleWindowResize);
@@ -1491,9 +1693,9 @@ export const MediaEditor = () => {
                   <h1>STICKERS</h1>
                   <button
                     style={{padding: '16px', background: 'blue'}}
-                    // onClick={renderMedia}
+                    onClick={downloadStickerFrames}
                   >
-                    RENDER IMAGE
+                    DOWNLOAD STICKER
                   </button>
                 </div>
               )}
