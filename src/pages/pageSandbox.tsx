@@ -29,7 +29,12 @@ const onFirstMount = () => {
     });
   }
 
-  createMediaEditor();
+  createMediaEditor({
+    onMediaSave: () => {
+      alert('media save event');
+    },
+    mediaFile: null
+  });
 
   // const IconGallery = () => {
   //   return (

@@ -80,3 +80,17 @@ export async function tiltImage(imageBitmap: ImageBitmap, tiltAngle: number) {
   return tiltedImageBitmap;
 }
 
+export async function changeImageBitmapSize(imageBitmap: ImageBitmap, newWidth: number, newHeight: number) {
+  const resizedCanvas = document.createElement('canvas');
+  resizedCanvas.width = newWidth;
+  resizedCanvas.height = newHeight;
+
+  const resizedCtx = resizedCanvas.getContext('2d');
+
+  resizedCtx.drawImage(imageBitmap, 0, 0, newWidth, newHeight);
+
+  const resizedImageBitmap = await createImageBitmap(resizedCanvas);
+  resizedCanvas.remove();
+
+  return resizedImageBitmap;
+}

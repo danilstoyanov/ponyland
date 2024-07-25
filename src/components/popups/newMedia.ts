@@ -157,6 +157,8 @@ export default class PopupNewMedia extends PopupElement {
     const canSendVideos = canSend.send_videos;
     const canSendDocs = canSend.send_docs;
 
+    console.log('this.btnConfirm: ', this.btnConfirm);
+
     attachClickEvent(this.btnConfirm, async() => (await pause(0), this.send()), {listenerSetter: this.listenerSetter});
 
     const btnMenu = ButtonMenuToggle({
@@ -674,6 +676,9 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
+
+    debugger;
+
     let effect = this.effect();
     this.iterate((sendFileParams) => {
       if(caption && sendFileParams.length !== length) {
@@ -751,6 +756,7 @@ export default class PopupNewMedia extends PopupElement {
     return scaledBlob && {url, blob: scaledBlob};
   }
 
+  // Работает для каждого изображения которое мы добавляем к отправке
   private async attachMedia(params: SendFileParams) {
     const {itemDiv} = params;
     itemDiv.classList.add('popup-item-media');
@@ -809,22 +815,14 @@ export default class PopupNewMedia extends PopupElement {
       const spoilerBtn = ButtonIcon('mediaspoiler', {noRipple: true});
       const binBtn = ButtonIcon('delete_filled', {noRipple: true});
 
-      enhanceBtn.addEventListener('click', () => {
-        createMediaEditor();
-      });
-
       imageMenuDiv.append(enhanceBtn, spoilerBtn, binBtn);
       itemDiv.append(imageMenuDiv);
 
       const url = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
 
-      console.debug('URL: ', url);
-
       await renderImageFromUrlPromise(img, url);
       const mimeType = params.file.type as MTMimeType;
       const scaled = await this.scaleImageForTelegram(img, mimeType, true);
-
-      console.debug('SCALED: ', scaled);
 
       if(scaled) {
         params.objectURL = scaled.url;
@@ -833,6 +831,31 @@ export default class PopupNewMedia extends PopupElement {
 
       params.width = img.naturalWidth;
       params.height = img.naturalHeight;
+
+      enhanceBtn.addEventListener('click', () => {
+        console.log('SCALED: ', scaled);
+        console.log('img: ', img);
+        console.log('url: ', url);
+
+        console.log('this.willAttach: ', this.willAttach);
+
+        createMediaEditor({
+          onMediaSave: (file) => {
+            console.log('params: ', params);
+
+            // {
+            //   "file": {},
+            //   "objectURL": "blob:http://localhost:8080/d5e70394-bb95-4555-8e73-2592d426be80",
+            //   "width": 1585,
+            //   "height": 2113
+            // }
+
+            // работает, но нужно еще позаботиться об удалении старого файла и обновлении лайаута попапа
+            this.attachFile(file);
+          },
+          mediaFile: file
+        });
+      });
 
       if(file.type === 'image/gif') {
         params.noSound = true;

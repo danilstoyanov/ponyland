@@ -204,7 +204,6 @@
     backdrop-filter: blur(16px);
     border-radius: 16px;
     background: rgba(0, 0, 0, 0.2);
-    transform: translateY(100%);
     transition: transform var(--transition-standard-in);
   }
 
@@ -216,10 +215,10 @@
     img {
       object-fit: contain;
     }
+  }
 
-    &:hover .popup-item-media-menu {
-      transform: translateY(-6px);
-    }
+  .popup-photo .popup-item-media:hover {
+    bottom: 0;
   }
 
   .popup-photo > .popup-item {

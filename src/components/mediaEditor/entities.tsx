@@ -36,8 +36,20 @@ export interface TextEntityType extends MediaEditorEntity {
   fontFamily: TextEntityFontFamily;
 };
 
+interface MediaEditorEntity {
+  id: number;
+  x: number;
+  y: number;
+  width: number | 'auto';
+  height: number | 'auto';
+  type: MediaEditorEntityType;
+  rotate: 0;
+};
+
+
 export interface StickerEntityType extends MediaEditorEntity {
-  node: HTMLImageElement;
+  docId: DocId;
+  container: HTMLElement;
 }
 
 interface TransformableEntityProps {
@@ -168,7 +180,7 @@ export const TextEntity = (props: TextEntityType) => {
 export const StickerEntity = (props: StickerEntityType) => {
   return (
     <div class={styles.TextEntity}>
-      {props.node};
+      {props.container}
     </div>
   )
 };

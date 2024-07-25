@@ -132,7 +132,7 @@ export class EmoticonsDropdown {
     return this.tabsToRender.find((tab) => tab instanceof instance) as T;
   }
 
-  public init(handleStickerClick: any) {
+  public init({handleStickerClick}: any) {
     this.managers = rootScope.managers;
     this.handleStickerClick = handleStickerClick;
 

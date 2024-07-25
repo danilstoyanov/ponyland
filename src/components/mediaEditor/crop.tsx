@@ -1,4 +1,4 @@
-import {createEffect, createSignal, JSX, onCleanup, onMount} from 'solid-js';
+import {createEffect, createSignal, JSX, on, onCleanup, onMount} from 'solid-js';
 import {createStore, unwrap} from 'solid-js/store';
 import type {MediaEditorCropState} from '.';
 import {ButtonIconTsx} from '../buttonIconTsx';
@@ -314,6 +314,7 @@ export const Crop = (props: CropPops) => {
     updateCropSize(CROPWIDTH, CROPHEIGHT);
     updateCropImage(left, top);
     updateContainer(left, top);
+    adjustCropSizeToAspectRatio(props.state.aspectRatio);
 
     handleCropChange({
       workareaHeight: cropImageRef.height,
@@ -338,27 +339,28 @@ export const Crop = (props: CropPops) => {
     let aspectWidth: number | undefined;
     let aspectHeight: number | undefined;
 
+    // Maintain the original aspect ratio of the image
+    const originalWidth = props.image.naturalWidth;
+    const originalHeight = props.image.naturalHeight;
+
     switch(aspectRatio) {
       case 'Free':
-        // Free aspect ratio, do not enforce any specific aspect ratio
-        return;
+        // Set the crop area to the image dimensions
+        width = originalWidth;
+        height = originalHeight;
+        break;
 
       case 'Original':
-        // Maintain the original aspect ratio of the image
-        const originalWidth = props.image.naturalWidth;
-        const originalHeight = props.image.naturalHeight;
         width = CROPWIDTH;
         height = (CROPWIDTH / originalWidth) * originalHeight;
         break;
 
       case 'Square':
-        // Enforce a square aspect ratio
         width = CROPWIDTH;
         height = CROPWIDTH;
         break;
 
       default:
-        // Handle custom aspect ratios
         [aspectWidth, aspectHeight] = aspectRatio.split(':').map(Number);
         if(aspectWidth && aspectHeight) {
           width = CROPWIDTH;
@@ -390,10 +392,11 @@ export const Crop = (props: CropPops) => {
     updateContainer(0, 0); // Reset the container position to the top-left corner
   };
 
-  createEffect(() => {
-    adjustCropSizeToAspectRatio(props.state.aspectRatio);
-  });
-
+  createEffect(on(() => props.state.aspectRatio, () => {
+    if(props.image.complete) {
+      adjustCropSizeToAspectRatio(props.state.aspectRatio);
+    }
+  }));
 
   // MAIN FUNCTION FOR CROP AREA RESIZE
   const handleCropAreaResize = () => {
@@ -515,7 +518,6 @@ export const Crop = (props: CropPops) => {
       });
     });
   };
-
 
   const handleRotationAngleUpdate = (value: number) => {
     const theta = value * (Math.PI / 180);
