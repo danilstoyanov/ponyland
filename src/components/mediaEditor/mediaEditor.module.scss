@@ -506,7 +506,41 @@
 }
 
 .TextEntity {
-  border-radius: 8px;
+  line-height: 1.25;
+
+  &AppearancePlain {
+    color: var(--text-color);
+    text-align: var(--text-align);
+  };
+
+  &AppearanceBackground {
+    display: flex;
+    flex-direction: column;
+    align-items: var(--text-background-appearance-alignment);
+
+    > div {
+      padding: 0 12px;
+      border-radius: 16px;
+      background-color: var(--text-color);
+      color: #fff;
+    }
+
+    > div:not(:first-of-type) {
+      transform: translateY(-2px);
+    }
+
+    &White {
+      > div {
+        color: #000;
+        background-color: var(--text-color);
+      }
+    }
+  };
+
+  &AppearanceBorder {
+    text-align: var(--text-align);
+    text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black;
+  };
 }
 
 .StickerEntity {

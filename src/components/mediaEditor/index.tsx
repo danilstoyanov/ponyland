@@ -137,7 +137,12 @@ const createRandomColorImage = () => {
   return img;
 }
 
-const MediaEditorRangeSelector = (props: RangeSelectorProps & { label: string; style?: Record<string, string> }) => {
+type MediaEditorRangeSelectorProps = RangeSelectorProps & {
+  label: string;
+  style?: Record<string, string>;
+}
+
+const MediaEditorRangeSelector = (props: MediaEditorRangeSelectorProps) => {
   const [local, others] = splitProps(props, ['label']);
   const [currentValue, setCurrentValue] = createSignal(props.value);
 
@@ -328,6 +333,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
   let DrawingManagerInstance: DrawingManager;
   let workareaImage: ImageBitmap;
 
+  const DEFAULT_FONT_SIZE = 48;
+
+  const DEFAULT_FONT_COLOR = 'var(--primary-color)';
+
   const initialState: MediaEditorStateType = {
     selectedEntityId : -1,
     selectedToolId: 0,
@@ -377,45 +386,49 @@ export const MediaEditor = (props: MediaEditorProps) => {
     ],
     entities: [
       // {
-      //   id: 0,
-      //   x: 100,
-      //   y: 100,
-      //   width: 300,
-      //   height: 100,
-      //   type: 'text',
-      //   textAlign: 'left',
-      //   appearance: 'plain',
-      //   backgroundColor: '',
-      //   fontSize: 32,
-      //   fontFamily: 'Roboto',
-      //   color: '#fff',
-      //   rotate: 0
+      //   'id': 0,
+      //   'x': 231.50001525878906,
+      //   'y': 113.50004577636719,
+      //   'fontSize': 48,
+      //   'rotate': 0,
+      //   'textAlign': 'left',
+      //   'backgroundColor': '',
+      //   'color': 'rgba(51,199,89)',
+      //   'type': 'text',
+      //   'appearance': 'plain',
+      //   'height': 'auto',
+      //   'width': 'auto',
+      //   'fontFamily': 'Comic Sans MS'
       // },
+      {
+        'id': 1,
+        'x': 205.50001525878906,
+        'y': 450.5000762939453,
+        'fontSize': 48,
+        'fontFamily': 'Roboto',
+        'rotate': 0,
+        'textAlign': 'right',
+        'backgroundColor': '',
+        'color': 'rgba(255,214,10)',
+        'type': 'text',
+        'appearance': 'background',
+        'height': 'auto',
+        'width': 'auto'
+      }
       // {
-      //   id: 1,
-      //   x: 200,
-      //   y: 150,
-      //   width: 200,
-      //   height: 100,
-      //   type: 'text',
-      //   textAlign: 'left',
-      //   appearance: 'plain',
-      //   backgroundColor: '',
-      //   fontSize: 32,
-      //   fontFamily: 'Roboto',
-      //   color: '#fff',
-      //   rotate: 0
-      // },
-      // {
-      //   id: 2,
-      //   x: 300,
-      //   y: 300,
-      //   width: 200,
-      //   height: 200,
-      //   type: 'sticker',
-      //   color: '#fff',
-      //   rotate: 0,
-      //   node: randomColorImage
+      //   'id': 2,
+      //   'x': 190.49998474121094,
+      //   'y': 777.5002288818359,
+      //   'fontSize': 48,
+      //   'rotate': 0,
+      //   'textAlign': 'left',
+      //   'backgroundColor': '',
+      //   'color': '#fff',
+      //   'type': 'text',
+      //   'appearance': 'border',
+      //   'height': 'auto',
+      //   'width': 'auto',
+      //   'fontFamily': 'Times New Roman'
       // }
     ],
     crop: {
@@ -446,7 +459,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
@@ -589,62 +602,114 @@ export const MediaEditor = (props: MediaEditorProps) => {
     }
   };
 
-  // * Canvas Renderer
-  const renderMedia = (angle: number) => {
+  // Utility function to read a Blob as a Data URL
+  const readBlobAsDataURL = (blob: any) => {
     return new Promise((resolve, reject) => {
-      // Create a new canvas for the resulting image
-      const resultCanvas = document.createElement('canvas');
-      resultCanvas.width = imageLayerCanvas.width;
-      resultCanvas.height = imageLayerCanvas.height;
-      const resultCtx = resultCanvas.getContext('2d');
-
-      // Render the base layer
-      resultCtx.drawImage(imageLayerCanvas, 0, 0);
-
-      // Render the drawing layer without transparency
-      resultCtx.drawImage(drawingLayerCanvas, 0, 0);
-
-      // Render stickers
-      // state.entities.forEach(entity => {
-      //   if(isStickerEntity(entity)) {
-      //     resultCtx.drawImage(
-      //       entity.node, // Assuming `node` is an image element
-      //       entity.x,
-      //       entity.y,
-      //       entity.width === 'auto' ? 100 : entity.width,
-      //       entity.height === 'auto' ? 100 : entity.height
-      //     );
-      //   }
-      // });
-
-      // Render text nodes
-      // state.entities.forEach(entity => {
-      //   if(isTextEntity(entity)) {
-      //     resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
-      //     resultCtx.fillStyle = entity.color;
-      //     resultCtx.textAlign = entity.textAlign;
-      //     resultCtx.save();
-      //     resultCtx.translate(entity.x + (entity as any).width / 2, entity.y + (entity as any).height / 2);
-      //     resultCtx.rotate((entity.rotate * Math.PI) / 180);
-      //     resultCtx.fillText(
-      //       'Your Text Here', // Replace with the actual text if available in the entity object
-      //       -entity.width / 2,
-      //       entity.fontSize / 2
-      //     );
-      //     resultCtx.restore();
-      //   }
-      // });
-
-      // Convert canvas to blob and resolve with the blob URL
-      resultCanvas.toBlob((blob) => {
-        if(blob) {
-          const data = readBlobAsDataURL(blob);
-          resolve(data);
-        } else {
-          reject(new Error('Failed to create blob'));
-        }
-      }, 'image/png');
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
+  };
+
+  // * Canvas Renderer
+  const renderMedia = () => {
+  // Create a new canvas for the resulting image
+    const resultCanvas = document.createElement('canvas');
+    resultCanvas.width = imageLayerCanvas.width;
+    resultCanvas.height = imageLayerCanvas.height;
+    const resultCtx = resultCanvas.getContext('2d');
+
+    // Render the base layer
+    resultCtx.drawImage(imageLayerCanvas, 0, 0);
+
+    // Render the drawing layer without transparency
+    resultCtx.drawImage(drawingLayerCanvas, 0, 0);
+
+    // Render text nodes
+    state.entities.forEach(entity => {
+      if(isTextEntity(entity)) {
+        if(entity.appearance === 'background') {
+          console.log('processing text entity', entity);
+
+          const node = document.querySelector(`[data-ref="${entity.id}"]`);
+          const textNodes = node.querySelectorAll('div');
+
+          resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+          resultCtx.textBaseline = 'middle'; // Vertically align text in the middle
+
+          const paddingTop = 4;
+          const paddingSides = 12;
+          const radius = 8;
+
+          // Calculate the overall bounding box
+          let maxWidth = 0;
+          let totalHeight = 0;
+          textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            const textMetrics = resultCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = entity.fontSize;
+
+            if(textWidth > maxWidth) {
+              maxWidth = textWidth;
+            }
+            totalHeight += textHeight + paddingTop * 2;
+          });
+
+          console.log('maxWidth: ', maxWidth);
+          console.log('totalHeight: ', totalHeight);
+
+          // Calculate the initial y position for the bounding box
+          let startY = entity.y;
+
+          // Draw the rectangles and text inside the bounding box
+          textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            const textMetrics = resultCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = entity.fontSize;
+
+            // Calculate the x position based on the selected text alignment
+            let x = entity.x;
+
+            switch(entity.textAlign) {
+              case 'left':
+                x = entity.x;
+                break;
+              case 'center':
+                x = entity.x - maxWidth / 2 + textWidth / 2;
+                break;
+              case 'right':
+                x = entity.x + maxWidth - textWidth;
+                break;
+            }
+
+            // Draw the background rectangle with rounded corners
+            resultCtx.fillStyle = entity.color;
+            resultCtx.beginPath();
+            resultCtx.roundRect(x - paddingSides, startY - textHeight / 2 - paddingTop, textWidth + paddingSides * 2, textHeight + paddingTop * 2, radius);
+            resultCtx.fill();
+
+            // Draw the text
+            resultCtx.fillStyle = 'white';
+            resultCtx.fillText(text, x, startY);
+
+            // Increment y position for next line of text
+            startY += textHeight + paddingTop * 2;
+          });
+        }
+      }
+    });
+
+    // Draw the resulting image back onto the result canvas
+    const context = imageLayerCanvas.getContext('2d');
+    if(context) {
+      context.clearRect(0, 0, imageLayerCanvas.width, imageLayerCanvas.height);
+      context.drawImage(resultCanvas, 0, 0);
+    } else {
+      console.error('Failed to get context from imageLayerCanvas');
+    }
   };
 
   const renderMediaForCrop = (angle: number) => {
@@ -841,17 +906,24 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   // * Text Entity Handlers
   const addTextEntity = () => {
+    const workareaCenterX = imageLayerCanvas.width / 2;
+    const workareaCenterY = imageLayerCanvas.height / 2;
+
+    // Assuming a default width and height for the text entity for initial centering
+    const defaultTextWidth = 200; // Set this according to your default or calculated text width
+    const defaultTextHeight = 50; // Set this according to your default or calculated text height
+
     setState('entities', state.entities.length, {
       id: state.entities.length,
-      x: 100,
-      y: 200,
-      fontSize: 24,
+      x: workareaCenterX - defaultTextWidth / 2,
+      y: workareaCenterY - defaultTextHeight / 2,
+      fontSize: DEFAULT_FONT_SIZE,
       rotate: 0,
       textAlign: 'left',
       backgroundColor: '',
-      color: 'white',
+      color: '#fff',
       type: 'text',
-      appearance: 'plain',
+      appearance: 'background',
       height: 'auto',
       width: 'auto'
     });
@@ -877,6 +949,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   const setTextEntityTextAlign = (textAlign: TextEntityType['textAlign']) => {
     setState('entities', state.selectedEntityId, {textAlign})
+  };
+
+  const setTextEntityAppearance = (appearance: TextEntityType['appearance']) => {
+    setState('entities', state.selectedEntityId, {appearance})
   };
 
   // * Resize management
@@ -915,21 +991,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
       drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
     }
   }, 16);
-
-  // * On Mount
-  // import {onMount} from 'solid-js';
-  // import {getScaledImageSize, setWorkareaDimensions, handleWindowResize} from './utils'; // Adjust imports as necessary
-  // import DrawingManager from './DrawingManager';
-  // import appDownloadManager from './AppDownloadManager'; // Adjust import as necessary
-  // import {createImageBitmap} from 'create-image-bitmap-polyfill'; // Polyfill for older browsers
-
-  // let DrawingManagerInstance;
-
-  // import {onMount} from 'solid-js';
-  // import {getScaledImageSize, setWorkareaDimensions, handleWindowResize} from './utils'; // Adjust imports as necessary
-  // import DrawingManager from './DrawingManager';
-  // import appDownloadManager from './AppDownloadManager'; // Adjust import as necessary
-  // import {createImageBitmap} from 'create-image-bitmap-polyfill'; // Polyfill for older browsers
 
   onMount(() => {
     const setupStickers = async() => {
@@ -979,8 +1040,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
       const ctx = imageLayerCanvas.getContext('2d');
       ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
 
-      DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
-      DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
+      // DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
+      // DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
 
       appDownloadManager.construct(rootScope.managers);
 
@@ -1014,7 +1075,9 @@ export const MediaEditor = (props: MediaEditorProps) => {
       console.log('hello world onMount: ', props.mediaFile);
     } else if(props.mediaFile === null) {
       // Handle the case when mediaFile is null
-      const png = img_3840x2160_8_4; // Placeholder for the actual image source
+
+      // const png = img_3840x2160_8_4; // Placeholder for the actual image source
+      const png = main_canvas_png; // Placeholder for the actual image source
 
       const image = new Image();
 
@@ -1030,9 +1093,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
       image.src = png;
     }
 
+    setTimeout(() => {
+      renderMedia();
+      document.querySelector('[data-ref="1"]').remove();
+    }, 250);
+
     window.addEventListener('resize', handleWindowResize);
   });
-
 
   const handleMediaEditorCloseClick = () => {
     props.onClose();
@@ -1226,6 +1293,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
     window.removeEventListener('resize', handleWindowResize);
   });
 
+  createEffect(() => {
+    console.log('state.entities: ', state.entities.length, unwrap(state.entities));
+  })
+
   // createEffect(on(activeTab, () => {
   // if(previewDimensions()) {
   // console.log('previewDimensions(): ', previewDimensions());
@@ -1283,6 +1354,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                 {(entity) => {
                   return (
                     <TransformableEntity
+                      workareaDimensions={workareaDimensions()}
                       previewRef={previewContentRef}
                       id={entity.id}
                       x={entity.x}
@@ -1298,7 +1370,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                         setState('entities', entity.id, {x, y});
                       }}
                       controls={[
-                        <ButtonIconTsx icon='delete_filled'  onClick={() => deleteTextEntity()} />
+                        <ButtonIconTsx icon='delete_filled'  onClick={deleteTextEntity} />
                       ]}
                     >
                       {isTextEntity(entity) ? (
@@ -1646,9 +1718,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                           icon="font_no_frame"
                           class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.appearance === 'plain' && styles.Active)}
                           onClick={() => {
-                            // setEntities((value) => {
-                            //   return value.map((item, idx) => idx === selectedEntityId() ? {...item, appearance: 'plain'} : item);
-                            // })
+                            setTextEntityAppearance('plain')
                           }}
                         />
 
@@ -1656,9 +1726,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                           icon="font_black"
                           class={classNames(styles.Button, styles.ButtonMediumSize, (state.entities[state.selectedEntityId] as TextEntityType)?.appearance === 'border' && styles.Active)}
                           onClick={() => {
-                            // setEntities((value) => {
-                            // return value.map((item, idx) => idx === selectedEntityId() ? {...item, appearance: 'border'} : item);
-                            // })
+                            setTextEntityAppearance('border')
                           }}
                         />
 
@@ -1666,9 +1734,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                           icon="font_white"
                           class={classNames(styles.Button, (state.entities[state.selectedEntityId] as TextEntityType)?.appearance === 'background' && styles.Active)}
                           onClick={() => {
-                            // setEntities((value) => {
-                            // return value.map((item, idx) => idx === selectedEntityId() ? {...item, appearance: 'background'} : item);
-                            // })
+                            setTextEntityAppearance('background')
                           }}
                         />
                       </div>
@@ -1680,10 +1746,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
                         min={10}
                         max={64}
                         step={1}
-                        value={16}
-                        onScrub={(value) => setTextEntityFontSize(value)}
+                        value={(state.entities[state.selectedEntityId] as TextEntityType)?.fontSize ?? DEFAULT_FONT_SIZE}
+                        onScrub={setTextEntityFontSize}
                         style={{
-                          '--color': `${(state.entities[state.selectedEntityId] as TextEntityType)?.color ?? 'var(--primary-color)'}`
+                          '--color': `${(state.entities[state.selectedEntityId] as TextEntityType)?.color ?? DEFAULT_FONT_COLOR}`
                         }}
                       />
                     </div>
@@ -1797,6 +1863,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
                     onClick={renderMediaForTest}
                   >
                     File Update Debug
+                  </button>
+
+                  <button
+                    style={{'margin-left': '8px', 'padding': '16px', 'background': 'red'}}
+                    onClick={renderMedia}
+                  >
+                    Render Media
                   </button>
                 </div>
               )}
