@@ -385,51 +385,56 @@ export const MediaEditor = (props: MediaEditorProps) => {
       }
     ],
     entities: [
-      // {
-      //   'id': 0,
-      //   'x': 231.50001525878906,
-      //   'y': 113.50004577636719,
-      //   'fontSize': 48,
-      //   'rotate': 0,
-      //   'textAlign': 'left',
-      //   'backgroundColor': '',
-      //   'color': 'rgba(51,199,89)',
-      //   'type': 'text',
-      //   'appearance': 'plain',
-      //   'height': 'auto',
-      //   'width': 'auto',
-      //   'fontFamily': 'Comic Sans MS'
-      // },
       {
-        'id': 1,
-        'x': 205.50001525878906,
-        'y': 450.5000762939453,
+        'id': 0,
+        'x': 50,
+        'y': 50,
         'fontSize': 48,
-        'fontFamily': 'Roboto',
         'rotate': 0,
         'textAlign': 'right',
         'backgroundColor': '',
-        'color': 'rgba(255,214,10)',
+        'color': 'rgba(51,199,89)',
         'type': 'text',
+        'appearance': 'border',
+        'height': 'auto',
+        'width': 'auto',
+        'fontFamily': 'Comic Sans MS'
+      },
+      {
+        'id': 1,
+        'x': 255,
+        'y': 380,
+        'fontSize': 48,
+        'fontFamily': 'Comic Sans MS',
+        'rotate': 0,
+        // 'textAlign': 'left',
+        // 'textAlign': 'center',
+        'textAlign': 'center',
+        'backgroundColor': '',
+        'color': 'rgba(255,214,10)',
+        // 'color': 'rgba(255,255,255)',
+        'type': 'text',
+        // 'appearance': 'border',
         'appearance': 'background',
         'height': 'auto',
         'width': 'auto'
+      },
+      {
+        'id': 2,
+        'x': 50,
+        'y': 740,
+        'fontSize': 48,
+        'rotate': 0,
+        'textAlign': 'left',
+        'backgroundColor': '',
+        // 'color': '#ff0000',
+        'color': 'rgba(255,255,255)',
+        'type': 'text',
+        'appearance': 'plain',
+        'height': 'auto',
+        'width': 'auto',
+        'fontFamily': 'Times New Roman'
       }
-      // {
-      //   'id': 2,
-      //   'x': 190.49998474121094,
-      //   'y': 777.5002288818359,
-      //   'fontSize': 48,
-      //   'rotate': 0,
-      //   'textAlign': 'left',
-      //   'backgroundColor': '',
-      //   'color': '#fff',
-      //   'type': 'text',
-      //   'appearance': 'border',
-      //   'height': 'auto',
-      //   'width': 'auto',
-      //   'fontFamily': 'Times New Roman'
-      // }
     ],
     crop: {
       x: 0,
@@ -614,7 +619,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   // * Canvas Renderer
   const renderMedia = () => {
-  // Create a new canvas for the resulting image
+    // Create a new canvas for the resulting image
     const resultCanvas = document.createElement('canvas');
     resultCanvas.width = imageLayerCanvas.width;
     resultCanvas.height = imageLayerCanvas.height;
@@ -641,6 +646,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
           const paddingTop = 4;
           const paddingSides = 12;
           const radius = 8;
+          const microGap = 2; // small adjustment to remove micro gap
 
           // Calculate the overall bounding box
           let maxWidth = 0;
@@ -654,7 +660,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
             if(textWidth > maxWidth) {
               maxWidth = textWidth;
             }
-            totalHeight += textHeight + paddingTop * 2;
+            totalHeight += textHeight + paddingTop * 2 + microGap;
           });
 
           console.log('maxWidth: ', maxWidth);
@@ -664,6 +670,117 @@ export const MediaEditor = (props: MediaEditorProps) => {
           let startY = entity.y;
 
           // Draw the rectangles and text inside the bounding box
+          textNodes.forEach((textNode, index) => {
+            const text = textNode.textContent;
+            const textMetrics = resultCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = entity.fontSize;
+
+            // Calculate the x position based on the selected text alignment
+            let x = entity.x;
+
+            switch(entity.textAlign) {
+              case 'left':
+                x = entity.x;
+                break;
+              case 'center':
+                x = entity.x + maxWidth / 2 - (textWidth / 2);
+                break;
+              case 'right':
+                x = entity.x + maxWidth - textWidth;
+                break;
+            }
+
+            // Determine the border radius for the current rectangle
+            let borderRadius = [0, 0, 0, 0]; // [top-left, top-right, bottom-right, bottom-left]
+
+            if(textNodes.length === 1) {
+              borderRadius = [radius, radius, radius, radius];
+            } else {
+              if(entity.textAlign === 'left') {
+                if(index === 0) {
+                  borderRadius = [radius, radius, 0, 0];
+                } else if(index === textNodes.length - 1) {
+                  borderRadius = [0, radius, radius, radius];
+                } else {
+                  if(textNode.clientWidth > textNodes[index - 1].clientWidth) {
+                    borderRadius = [0, radius, radius, 0]; // Add border radius to the right
+                  } else {
+                    borderRadius = [0, 0, 0, 0];
+                  }
+                }
+              } else if(entity.textAlign === 'right') {
+                if(index === 0) {
+                  borderRadius = [radius, radius, 0, 0];
+                } else if(index === textNodes.length - 1) {
+                  borderRadius = [radius, 0, radius, radius];
+                } else {
+                  if(textNode.clientWidth > textNodes[index - 1].clientWidth) {
+                    borderRadius = [radius, 0, 0, radius];
+                  } else {
+                    borderRadius = [0, 0, 0, 0];
+                  }
+                }
+              } else if(entity.textAlign === 'center') {
+                if(index === 0) {
+                  borderRadius = [radius, radius, 0, 0];
+                } else if(index === textNodes.length - 1) {
+                  borderRadius = [radius, radius, radius, radius];
+                } else {
+                  if(textNode.clientWidth > textNodes[index - 1].clientWidth) {
+                    borderRadius = [radius, radius, radius, radius];
+                  } else {
+                    borderRadius = [0, 0, 0, 0];
+                  }
+                }
+              }
+            }
+
+            // Draw the background rectangle with rounded corners
+            resultCtx.fillStyle = entity.color;
+            resultCtx.beginPath();
+            resultCtx.roundRect(x - paddingSides, startY - textHeight / 2 - paddingTop, textWidth + paddingSides * 2, textHeight + paddingTop * 2, borderRadius);
+            resultCtx.fill();
+
+            // Draw the text
+            resultCtx.fillStyle = 'white';
+            resultCtx.fillText(text, x, startY);
+
+            // Increment y position for next line of text, subtracting the micro gap
+            startY += textHeight + paddingTop * 2 - microGap;
+          });
+        } else if(entity.appearance === 'border') {
+          console.log('processing plain text entity', entity);
+
+          const node = document.querySelector(`[data-ref="${entity.id}"]`);
+          const textNodes = node.querySelectorAll('div');
+
+          resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+          resultCtx.textBaseline = 'middle'; // Vertically align text in the middle
+          resultCtx.fillStyle = entity.color; // Set the text color from entity.color
+
+          // Calculate the overall bounding box
+          let maxWidth = 0;
+          let totalHeight = 0;
+          textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            const textMetrics = resultCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = entity.fontSize;
+
+            if(textWidth > maxWidth) {
+              maxWidth = textWidth;
+            }
+            totalHeight += textHeight;
+          });
+
+          console.log('maxWidth: ', maxWidth);
+          console.log('totalHeight: ', totalHeight);
+
+          // Calculate the initial y position for the bounding box
+          let startY = entity.y;
+
+          // Draw the text lines
           textNodes.forEach(textNode => {
             const text = textNode.textContent;
             const textMetrics = resultCtx.measureText(text);
@@ -678,25 +795,94 @@ export const MediaEditor = (props: MediaEditorProps) => {
                 x = entity.x;
                 break;
               case 'center':
-                x = entity.x - maxWidth / 2 + textWidth / 2;
+                x = entity.x + maxWidth / 2 - (textWidth / 2);
                 break;
               case 'right':
                 x = entity.x + maxWidth - textWidth;
                 break;
             }
 
-            // Draw the background rectangle with rounded corners
-            resultCtx.fillStyle = entity.color;
-            resultCtx.beginPath();
-            resultCtx.roundRect(x - paddingSides, startY - textHeight / 2 - paddingTop, textWidth + paddingSides * 2, textHeight + paddingTop * 2, radius);
-            resultCtx.fill();
+            // Draw the text shadow
+            resultCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+            resultCtx.shadowOffsetX = 0;
+            resultCtx.shadowOffsetY = 0;
+            resultCtx.shadowBlur = 4;
 
             // Draw the text
-            resultCtx.fillStyle = 'white';
             resultCtx.fillText(text, x, startY);
 
+            // Disable shadow for next operations
+            resultCtx.shadowColor = 'transparent';
+            resultCtx.shadowBlur = 0;
+
             // Increment y position for next line of text
-            startY += textHeight + paddingTop * 2;
+            startY += textHeight;
+          });
+        } else if(entity.appearance === 'plain') {
+          console.log('processing plain text entity', entity);
+
+          const node = document.querySelector(`[data-ref="${entity.id}"]`);
+          const textNodes = node.querySelectorAll('div');
+
+          resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+          resultCtx.textBaseline = 'middle'; // Vertically align text in the middle
+          resultCtx.fillStyle = entity.color; // Set the text color to white
+
+          // Calculate the overall bounding box
+          let maxWidth = 0;
+          let totalHeight = 0;
+          textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            const textMetrics = resultCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = entity.fontSize;
+
+            if(textWidth > maxWidth) {
+              maxWidth = textWidth;
+            }
+            totalHeight += textHeight;
+          });
+
+          // Calculate the initial y position for the bounding box
+          let startY = entity.y;
+
+          // Draw the text lines with stroke
+          textNodes.forEach(textNode => {
+            const text = textNode.textContent;
+            const textMetrics = resultCtx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = entity.fontSize;
+
+            // Calculate the x position based on the selected text alignment
+            let x = entity.x;
+
+            switch(entity.textAlign) {
+              case 'left':
+                x = entity.x;
+                break;
+              case 'center':
+                x = entity.x + maxWidth / 2 - (textWidth / 2);
+                break;
+              case 'right':
+                x = entity.x + maxWidth - textWidth;
+                break;
+            }
+
+            // Draw the text stroke
+            // resultCtx.strokeStyle = entity.color;
+            resultCtx.strokeStyle = '#000';
+            resultCtx.lineWidth = 5;
+            resultCtx.strokeText(text, x, startY);
+
+            // Draw the white text
+            resultCtx.fillText(text, x, startY);
+
+            // Disable shadow for next operations
+            resultCtx.shadowColor = 'transparent';
+            resultCtx.shadowBlur = 0;
+
+            // Increment y position for next line of text
+            startY += textHeight;
           });
         }
       }
@@ -711,6 +897,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
       console.error('Failed to get context from imageLayerCanvas');
     }
   };
+
 
   const renderMediaForCrop = (angle: number) => {
     return new Promise(async(resolve, reject) => {
@@ -1095,7 +1282,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     setTimeout(() => {
       renderMedia();
-      document.querySelector('[data-ref="1"]').remove();
+      document.querySelector('[data-ref="0"]')?.remove();
+      document.querySelector('[data-ref="1"]')?.remove();
+      document.querySelector('[data-ref="2"]')?.remove();
+      document.querySelector('[data-ref="3"]')?.remove();
     }, 250);
 
     window.addEventListener('resize', handleWindowResize);
