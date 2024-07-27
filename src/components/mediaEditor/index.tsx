@@ -1,6 +1,5 @@
 import {Portal, render} from 'solid-js/web';
 import {createStore, unwrap} from 'solid-js/store';
-import {ChatType} from '../chat/chat';
 import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps, onCleanup} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import {RangeSelectorTsx} from '../rangeSelectorTsx';
@@ -39,7 +38,7 @@ import {
   applyGrain,
   applySharp
 } from './filters';
-import {isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
+import {isCloseToWhite, isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, EraserTool} from './drawing';
 import StickersTab from './sticker-tab';
@@ -419,12 +418,12 @@ export const MediaEditor = (props: MediaEditorProps) => {
       //   'rotate': 0,
       //   'textAlign': 'center',
       //   'backgroundColor': '',
-      //   'color': 'rgba(255,214,10)',
+      //   'color': 'rgba(255,255,255)',
       //   'type': 'text',
       //   'appearance': 'background',
       //   'height': 'auto',
       //   'width': 'auto'
-      // },
+      // }
       // {
       //   'id': 2,
       //   'x': 50,
@@ -468,11 +467,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
-
-  // const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
-
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
-
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
@@ -626,7 +621,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
   };
 
   // * Canvas Renderer
-  const renderMedia = () => {
+  const renderMedia = async() => {
     // Create a new canvas for the resulting image
     const resultCanvas = document.createElement('canvas');
     resultCanvas.width = imageLayerCanvas.width;
@@ -645,8 +640,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
       if(isTextEntity(entity)) {
         if(entity.appearance === 'background') {
-          console.log('processing text entity', entity);
-
           const node = document.querySelector(`[data-ref="${entity.id}"]`);
           const textNodes = node.querySelectorAll('div');
 
@@ -775,7 +768,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
             resultCtx.fill();
 
             // Draw the text
-            resultCtx.fillStyle = 'white';
+            resultCtx.fillStyle = isCloseToWhite(entity.color) ? 'black' : 'white';
             resultCtx.fillText(text, x, startY);
 
             // Increment y position for next line of text, subtracting the micro gap
@@ -924,6 +917,175 @@ export const MediaEditor = (props: MediaEditorProps) => {
       context.drawImage(resultCanvas, 0, 0);
     } else {
       console.error('Failed to get context from imageLayerCanvas');
+    }
+
+    const isResultImage = true;
+
+    const renderVideo = async() => {
+      const stickers = state.entities.filter(item => item.type === 'sticker');
+
+      const captureFrames = (stickerCanvas: HTMLCanvasElement, duration: number, fps: number) => {
+        return new Promise<ImageBitmap[]>((resolve) => {
+          const capturedFrames: ImageBitmap[] = [];
+          let framesCaptured = 0;
+          const captureInterval = 1000 / fps; // Interval in milliseconds
+
+          const captureFrame = () => {
+            if(framesCaptured >= (duration / captureInterval)) {
+              resolve(capturedFrames);
+              return;
+            }
+            stickerCanvas.toBlob((blob) => {
+              createImageBitmap(blob).then((bitmap) => {
+                capturedFrames.push(bitmap);
+                framesCaptured++;
+                setTimeout(captureFrame, captureInterval);
+              });
+            });
+          };
+
+          captureFrame();
+        });
+      };
+
+      const createVideoFromFrames = (frames: ImageBitmap[], fps: number) => {
+        return new Promise<Blob>((resolve) => {
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+
+          if(!context) {
+            throw new Error('Failed to get 2D context');
+          }
+
+          canvas.width = frames[0].width;
+          canvas.height = frames[0].height;
+
+          const stream = canvas.captureStream();
+          const recordedBlobs: Blob[] = [];
+          const options = {mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'};
+          let mediaRecorder: MediaRecorder;
+
+          try {
+            mediaRecorder = new MediaRecorder(stream, options);
+          } catch(e0) {
+            console.error('Exception while creating MediaRecorder:', e0);
+            return;
+          }
+
+          mediaRecorder.onstop = (event) => {
+            console.log('Recorder stopped:', event);
+            const superBuffer = new Blob(recordedBlobs, {type: 'video/mp4'});
+            resolve(superBuffer);
+          };
+
+          mediaRecorder.ondataavailable = (event) => {
+            if(event.data && event.data.size > 0) {
+              recordedBlobs.push(event.data);
+            }
+          };
+
+          mediaRecorder.start();
+
+          let frameIndex = 0;
+          const drawNextFrame = () => {
+            if(frameIndex >= frames.length) {
+              mediaRecorder.stop();
+              return;
+            }
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(frames[frameIndex], 0, 0);
+            frameIndex++;
+            setTimeout(drawNextFrame, 1000 / fps);
+          };
+
+          drawNextFrame();
+        });
+      };
+
+      const captureAllStickerFrames = async(stickers: any) => {
+        const promises = stickers.map((sticker: any) => {
+          const stickerCanvas = sticker.container.querySelector('canvas');
+          return captureFrames(stickerCanvas, 3000, 60);
+        });
+        return Promise.all(promises);
+      };
+
+      const composeFramesWithBackground = (backgroundCtx: any, stickerFrames: any, stickers: any) => {
+        const framesWithBackground = [];
+
+        for(let i = 0; i < stickerFrames[0].length; i++) {
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = backgroundCtx.canvas.width;
+          tempCanvas.height = backgroundCtx.canvas.height;
+          const tempCtx = tempCanvas.getContext('2d');
+
+          // Draw the background
+          tempCtx.drawImage(backgroundCtx.canvas, 0, 0);
+
+          // Draw each sticker frame at its respective position
+          stickers.forEach((sticker: any, index: number) => {
+            const frame = stickerFrames[index][i];
+            tempCtx.drawImage(frame, sticker.x, sticker.y);
+          });
+
+          // Convert the result to an ImageBitmap and store it
+          framesWithBackground.push(tempCanvas);
+        }
+
+        return framesWithBackground;
+      };
+
+      const imageLayerCanvasCtx = imageLayerCanvas.getContext('2d');
+
+      if(imageLayerCanvasCtx) {
+        const stickerFrames = await captureAllStickerFrames(stickers);
+        const framesWithBackgroundCanvases = composeFramesWithBackground(imageLayerCanvasCtx, stickerFrames, stickers);
+
+        // Convert canvases to ImageBitmap
+        const framesWithBackgroundPromises = framesWithBackgroundCanvases.map(canvas => {
+          return new Promise<ImageBitmap>((resolve) => {
+            canvas.toBlob((blob) => {
+              createImageBitmap(blob).then((bitmap) => {
+                resolve(bitmap);
+              });
+            });
+          });
+        });
+
+        const framesWithBackground = await Promise.all(framesWithBackgroundPromises);
+
+        createVideoFromFrames(framesWithBackground, 60).then((videoBlob) => {
+          const url = window.URL.createObjectURL(videoBlob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = 'recorded.mp4';
+          document.body.appendChild(a);
+          a.click();
+
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+
+          console.log('Frames with background:', framesWithBackground);
+          console.log('Stickers:', stickers);
+        });
+      }
+    };
+
+    if(state.entities.some(entity => entity.type === 'sticker')) {
+      await renderVideo();
+    } else {
+      // Convert the result canvas to a Blob and create a download link
+      resultCanvas.toBlob(async(blob) => {
+        const dataUrl = await readBlobAsDataURL(blob);
+        const downloadLink = document.createElement('a');
+        // @ts-ignore
+        downloadLink.href = dataUrl;
+        downloadLink.download = 'result-image.png';
+        downloadLink.click();
+      }, 'image/png');
     }
   };
 
@@ -1236,34 +1398,34 @@ export const MediaEditor = (props: MediaEditorProps) => {
   }, 16);
 
   onMount(() => {
-    const setupStickers = async() => {
+    const setupStickers = () => {
       // Setup stickers or other entities
       // Uncomment and adjust the code as necessary for your setup
 
       // const stickers = new StickersTab(rootScope.managers);
       // stickers.init();
 
-      // const stickers = EmoticonsDropdown.getElement();
-      // EmoticonsDropdown.init(
-      //   {
-      //     handleStickerClick: async(target: any) => {
-      //       const doc = await rootScope.managers.appDocsManager.getDoc(target.dataset.docId);
-      //       const wrapper = document.createElement('div');
+      const stickers = EmoticonsDropdown.getElement();
+      EmoticonsDropdown.init(
+        {
+          handleStickerClick: async(target: any) => {
+            const doc = await rootScope.managers.appDocsManager.getDoc(target.dataset.docId);
+            const wrapper = document.createElement('div');
 
-      //       wrapSticker({
-      //         doc,
-      //         div: wrapper,
-      //         loop: true,
-      //         play: true,
-      //         withThumb: false,
-      //         loopEffect: true
-      //       });
+            wrapSticker({
+              doc,
+              div: wrapper,
+              loop: true,
+              play: true,
+              withThumb: false,
+              loopEffect: true
+            });
 
-      //       addStickerEntity(wrapper, target.dataset.docId);
-      //     }
-      //   }
-      // );
-      // stickerTabRef.appendChild(stickers);
+            addStickerEntity(wrapper, target.dataset.docId);
+          }
+        }
+      );
+      stickerTabRef.appendChild(stickers);
     };
 
     // props.mediaFile;
@@ -1337,15 +1499,17 @@ export const MediaEditor = (props: MediaEditorProps) => {
     // DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
     // DrawingManagerInstance.deactivate();
 
+    setupStickers();
+
     // DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
 
 
     // setTimeout(() => {
-    // renderMedia();
-    // document.querySelector('[data-ref="0"]')?.remove();
-    // document.querySelector('[data-ref="1"]')?.remove();
-    // document.querySelector('[data-ref="2"]')?.remove();
-    // document.querySelector('[data-ref="3"]')?.remove();
+    //   renderMedia();
+    //   document.querySelector('[data-ref="0"]')?.remove();
+    //   document.querySelector('[data-ref="1"]')?.remove();
+    //   document.querySelector('[data-ref="2"]')?.remove();
+    //   document.querySelector('[data-ref="3"]')?.remove();
     // }, 250);
 
     window.addEventListener('resize', handleWindowResize);
@@ -1382,159 +1546,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
     }, 'image/png');
 
     console.log('RENDER MEDIA FOR TEST');
-  };
-
-  const renderVideo = async() => {
-    const stickers = state.entities.filter(item => item.type === 'sticker');
-
-    const captureFrames = (stickerCanvas: HTMLCanvasElement, duration: number, fps: number) => {
-      return new Promise<ImageBitmap[]>((resolve) => {
-        const capturedFrames: ImageBitmap[] = [];
-        let framesCaptured = 0;
-        const captureInterval = 1000 / fps; // Interval in milliseconds
-
-        const captureFrame = () => {
-          if(framesCaptured >= (duration / captureInterval)) {
-            resolve(capturedFrames);
-            return;
-          }
-          stickerCanvas.toBlob((blob) => {
-            createImageBitmap(blob).then((bitmap) => {
-              capturedFrames.push(bitmap);
-              framesCaptured++;
-              setTimeout(captureFrame, captureInterval);
-            });
-          });
-        };
-
-        captureFrame();
-      });
-    };
-
-    const createVideoFromFrames = (frames: ImageBitmap[], fps: number) => {
-      return new Promise<Blob>((resolve) => {
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-
-        if(!context) {
-          throw new Error('Failed to get 2D context');
-        }
-
-        canvas.width = frames[0].width;
-        canvas.height = frames[0].height;
-
-        const stream = canvas.captureStream();
-        const recordedBlobs: Blob[] = [];
-        const options = {mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'};
-        let mediaRecorder: MediaRecorder;
-
-        try {
-          mediaRecorder = new MediaRecorder(stream, options);
-        } catch(e0) {
-          console.error('Exception while creating MediaRecorder:', e0);
-          return;
-        }
-
-        mediaRecorder.onstop = (event) => {
-          console.log('Recorder stopped:', event);
-          const superBuffer = new Blob(recordedBlobs, {type: 'video/mp4'});
-          resolve(superBuffer);
-        };
-
-        mediaRecorder.ondataavailable = (event) => {
-          if(event.data && event.data.size > 0) {
-            recordedBlobs.push(event.data);
-          }
-        };
-
-        mediaRecorder.start();
-
-        let frameIndex = 0;
-        const drawNextFrame = () => {
-          if(frameIndex >= frames.length) {
-            mediaRecorder.stop();
-            return;
-          }
-          context.clearRect(0, 0, canvas.width, canvas.height);
-          context.drawImage(frames[frameIndex], 0, 0);
-          frameIndex++;
-          setTimeout(drawNextFrame, 1000 / fps);
-        };
-
-        drawNextFrame();
-      });
-    };
-
-    const captureAllStickerFrames = async(stickers: any) => {
-      const promises = stickers.map((sticker: any) => {
-        const stickerCanvas = sticker.container.querySelector('canvas');
-        return captureFrames(stickerCanvas, 3000, 60);
-      });
-      return Promise.all(promises);
-    };
-
-    const composeFramesWithBackground = (backgroundCtx: any, stickerFrames: any, stickers: any) => {
-      const framesWithBackground = [];
-
-      for(let i = 0; i < stickerFrames[0].length; i++) {
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = backgroundCtx.canvas.width;
-        tempCanvas.height = backgroundCtx.canvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-
-        // Draw the background
-        tempCtx.drawImage(backgroundCtx.canvas, 0, 0);
-
-        // Draw each sticker frame at its respective position
-        stickers.forEach((sticker: any, index: number) => {
-          const frame = stickerFrames[index][i];
-          tempCtx.drawImage(frame, sticker.x, sticker.y);
-        });
-
-        // Convert the result to an ImageBitmap and store it
-        framesWithBackground.push(tempCanvas);
-      }
-
-      return framesWithBackground;
-    };
-
-    const imageLayerCanvasCtx = imageLayerCanvas.getContext('2d');
-
-    if(imageLayerCanvasCtx) {
-      const stickerFrames = await captureAllStickerFrames(stickers);
-      const framesWithBackgroundCanvases = composeFramesWithBackground(imageLayerCanvasCtx, stickerFrames, stickers);
-
-      // Convert canvases to ImageBitmap
-      const framesWithBackgroundPromises = framesWithBackgroundCanvases.map(canvas => {
-        return new Promise<ImageBitmap>((resolve) => {
-          canvas.toBlob((blob) => {
-            createImageBitmap(blob).then((bitmap) => {
-              resolve(bitmap);
-            });
-          });
-        });
-      });
-
-      const framesWithBackground = await Promise.all(framesWithBackgroundPromises);
-
-      createVideoFromFrames(framesWithBackground, 60).then((videoBlob) => {
-        const url = window.URL.createObjectURL(videoBlob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = 'recorded.mp4';
-        document.body.appendChild(a);
-        a.click();
-
-        setTimeout(() => {
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-        }, 100);
-
-        console.log('Frames with background:', framesWithBackground);
-        console.log('Stickers:', stickers);
-      });
-    }
   };
 
   onCleanup(() => {
@@ -2104,7 +2115,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
               {activeTab() === 'smile' && (
                 <div class={classNames(styles.MediaEditorSidebarTabsContentTabPanel, styles.Stickers)} ref={stickerTabRef}>
                   <h1>STICKERS</h1>
-                  <button
+                  {/* <button
                     style={{padding: '16px', background: 'blue'}}
                     onClick={renderVideo}
                   >
@@ -2123,13 +2134,21 @@ export const MediaEditor = (props: MediaEditorProps) => {
                     onClick={renderMedia}
                   >
                     Render Media
-                  </button>
+                  </button> */}
                 </div>
               )}
             </div>
           </div>
 
-          <ButtonCornerTsx onClick={() => alert('click stuff')} />
+          {/* btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon */}
+
+          <ButtonCornerTsx
+            icon='check'
+            className='is-visible'
+            onClick={() => {
+              renderMedia();
+            }}
+          />
         </div>
       </div>
 

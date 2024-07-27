@@ -1,6 +1,7 @@
 import {createEffect, createSignal, JSX, JSXElement, on, onCleanup, onMount} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import styles from './mediaEditor.module.scss';
+import {hexToRgb} from '../../helpers/color';
 
 type MediaEditorEntityType = 'text' | 'sticker';
 
@@ -175,21 +176,7 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
   );
 };
 
-function isCloseToWhite(color: string) {
-  function hexToRgb(hex: string) {
-    // Remove the hash if present
-    hex = hex.replace(/^#/, '');
-    if(hex.length === 3) {
-      hex = hex.split('').map(char => char + char).join('');
-    }
-    const bigint = parseInt(hex, 16);
-    return {
-      r: (bigint >> 16) & 255,
-      g: (bigint >> 8) & 255,
-      b: bigint & 255
-    };
-  }
-
+export function isCloseToWhite(color: string) {
   function parseRgbString(rgbString: string) {
     const result = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/.exec(rgbString);
     return result ? {
@@ -209,13 +196,13 @@ function isCloseToWhite(color: string) {
   if(color.startsWith('#')) {
     rgb = hexToRgb(color);
   } else if(color.startsWith('rgb')) {
-    rgb = parseRgbString(color);
-  } else {
-    throw new Error('Unsupported color format');
+    const parsedRgb = parseRgbString(color);
+    if(!parsedRgb) throw new Error('Invalid RGB format');
+    rgb = [parsedRgb.r, parsedRgb.g, parsedRgb.b];
   }
 
-  const distance = distanceToWhite(rgb.r, rgb.g, rgb.b);
-  const threshold = 50; // Adjust this value as needed
+  const distance = distanceToWhite(rgb[0], rgb[1], rgb[2]);
+  const threshold = 50;
 
   return distance <= threshold;
 }
