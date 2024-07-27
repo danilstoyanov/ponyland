@@ -421,11 +421,8 @@
 }
 
 .TransformableEntity {
-  position: relative;
-  z-index: 3;
-  border: 1px dashed rgba(255, 255, 255, 0.3);
   position: absolute;
-  padding: 8px;
+  z-index: 3;
   color: white;
 
   &Selected {
@@ -441,8 +438,6 @@
   }
 
   &Controls {
-    
-    
     bottom: 0;
     position: absolute;
     display: flex;
@@ -506,7 +501,7 @@
 }
 
 .TextEntity {
-  line-height: 1.25;
+  line-height: 1;
 
   &AppearancePlain {
     color: var(--text-color);
@@ -520,13 +515,12 @@
 
     > div {
       padding: 0 12px;
-      border-radius: 16px;
       background-color: var(--text-color);
       color: #fff;
     }
 
-    > div:not(:first-of-type) {
-      transform: translateY(-2px);
+    > div:only-child {
+      border-radius: 10px;
     }
 
     &White {

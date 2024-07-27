@@ -1,8 +1,6 @@
 import {createEffect, createSignal, JSX, JSXElement, on, onCleanup, onMount} from 'solid-js';
-import {unwrap} from 'solid-js/store';
 import classNames from '../../helpers/string/classNames';
 import styles from './mediaEditor.module.scss';
-import {ButtonMenuSync} from '../buttonMenu';
 
 type MediaEditorEntityType = 'text' | 'sticker';
 
@@ -222,15 +220,6 @@ function isCloseToWhite(color: string) {
   return distance <= threshold;
 }
 
-// Examples
-// console.log(isCloseToWhite('#ffffff')); // true
-// console.log(isCloseToWhite('#f0f0f0')); // true
-// console.log(isCloseToWhite('rgb(250, 250, 250)')); // true
-// console.log(isCloseToWhite('rgba(240, 240, 240, 1)')); // true
-// console.log(isCloseToWhite('#000000')); // false
-// console.log(isCloseToWhite('rgb(0, 0, 0)')); // false
-// console.log(isCloseToWhite('rgba(0, 0, 0, 1)')); // false
-
 const mapTextAlignToAlignItems = (textAlign: TextEntityType['textAlign']) => {
   if(textAlign === 'left') return 'start';
   if(textAlign === 'center') return 'center';
@@ -326,7 +315,7 @@ export const TextEntity = (props: TextEntityType) => {
     assignBorderRadiusToChildren(event.target as HTMLDivElement, props.textAlign);
   };
 
-  onMount(() => {
+  createEffect(() => {
     if(props.appearance === 'background') {
       assignBorderRadiusToChildren(textEntityRef, props.textAlign);
     }

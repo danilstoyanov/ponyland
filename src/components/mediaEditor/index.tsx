@@ -385,51 +385,51 @@ export const MediaEditor = (props: MediaEditorProps) => {
       }
     ],
     entities: [
-      {
-        'id': 0,
-        'x': 0,
-        'y': 0,
-        'fontSize': 24,
-        'rotate': 0,
-        'textAlign': 'left',
-        'backgroundColor': '',
-        'color': 'rgba(51,199,89)',
-        'type': 'text',
-        'appearance': 'plain',
-        'height': 'auto',
-        'width': 'auto',
-        'fontFamily': 'Comic Sans MS'
-      },
-      {
-        'id': 1,
-        'x': 255,
-        'y': 380,
-        'fontSize': 32,
-        'fontFamily': 'Comic Sans MS',
-        'rotate': 0,
-        'textAlign': 'center',
-        'backgroundColor': '',
-        'color': 'rgba(255,214,10)',
-        'type': 'text',
-        'appearance': 'background',
-        'height': 'auto',
-        'width': 'auto'
-      },
-      {
-        'id': 2,
-        'x': 50,
-        'y': 740,
-        'fontSize': 18,
-        'rotate': 0,
-        'textAlign': 'left',
-        'backgroundColor': '',
-        'color': 'rgba(255,255,255)',
-        'type': 'text',
-        'appearance': 'border',
-        'height': 'auto',
-        'width': 'auto',
-        'fontFamily': 'Times New Roman'
-      }
+      // {
+      //   'id': 0,
+      //   'x': 0,
+      //   'y': 0,
+      //   'fontSize': 24,
+      //   'rotate': 0,
+      //   'textAlign': 'left',
+      //   'backgroundColor': '',
+      //   'color': 'rgba(51,199,89)',
+      //   'type': 'text',
+      //   'appearance': 'plain',
+      //   'height': 'auto',
+      //   'width': 'auto',
+      //   'fontFamily': 'Comic Sans MS'
+      // },
+      // {
+      //   'id': 1,
+      //   'x': 255,
+      //   'y': 380,
+      //   'fontSize': 32,
+      //   'fontFamily': 'Comic Sans MS',
+      //   'rotate': 0,
+      //   'textAlign': 'center',
+      //   'backgroundColor': '',
+      //   'color': 'rgba(255,214,10)',
+      //   'type': 'text',
+      //   'appearance': 'background',
+      //   'height': 'auto',
+      //   'width': 'auto'
+      // },
+      // {
+      //   'id': 2,
+      //   'x': 50,
+      //   'y': 740,
+      //   'fontSize': 18,
+      //   'rotate': 0,
+      //   'textAlign': 'left',
+      //   'backgroundColor': '',
+      //   'color': 'rgba(255,255,255)',
+      //   'type': 'text',
+      //   'appearance': 'border',
+      //   'height': 'auto',
+      //   'width': 'auto',
+      //   'fontFamily': 'Times New Roman'
+      // }
     ],
     crop: {
       x: 0,
@@ -1165,6 +1165,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
     // Save the current state of both layers
     const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
 
+    const oldDimensions = {
+      width: previewContentRef.offsetWidth,
+      height: previewContentRef.offsetHeight
+    };
+
     const dimensions = getScaledImageSize(previewRef, {
       imageHeight: originalImage().naturalHeight,
       imageWidth: originalImage().naturalWidth
@@ -1192,6 +1197,17 @@ export const MediaEditor = (props: MediaEditorProps) => {
       drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
       drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
     }
+
+    const scaleX = dimensions.width / oldDimensions.width;
+    const scaleY = dimensions.height / oldDimensions.height;
+
+    setState('entities', (entities) => {
+      return entities.map(entity => ({
+        ...entity,
+        x: entity.x * scaleX,
+        y: entity.y * scaleY
+      }));
+    });
   }, 16);
 
   onMount(() => {
@@ -1295,13 +1311,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
       image.src = png;
     }
 
-    setTimeout(() => {
-      renderMedia();
-      // document.querySelector('[data-ref="0"]')?.remove();
-      // document.querySelector('[data-ref="1"]')?.remove();
-      // document.querySelector('[data-ref="2"]')?.remove();
-      // document.querySelector('[data-ref="3"]')?.remove();
-    }, 250);
+    // setTimeout(() => {
+    // renderMedia();
+    // document.querySelector('[data-ref="0"]')?.remove();
+    // document.querySelector('[data-ref="1"]')?.remove();
+    // document.querySelector('[data-ref="2"]')?.remove();
+    // document.querySelector('[data-ref="3"]')?.remove();
+    // }, 250);
 
     window.addEventListener('resize', handleWindowResize);
   });
