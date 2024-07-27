@@ -67,7 +67,23 @@
     }
   }
 
+  &Loader {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    background-color: red;
+  };
+
+  &LoaderActive {
+    display: block;
+  }
+
   &InnerPreview {
+    // position: relative;
     width: auto;
     height: 100vh;
     display: flex;
@@ -430,10 +446,11 @@
 .TransformableEntity {
   position: absolute;
   z-index: 3;
+  padding: 8px;
   color: white;
 
   &Selected {
-    background-color: red;
+    border: 1px dashed rgba(255, 255, 255, 0.3);
   }
 
   &Corner {
@@ -509,6 +526,7 @@
 
 .TextEntity {
   line-height: 1;
+  outline: 0px solid transparent;
 
   &AppearancePlain {
     color: var(--text-color);

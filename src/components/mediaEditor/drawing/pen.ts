@@ -1,20 +1,20 @@
 import type {DrawingContext, DrawingTool, DrawingToolMethodParams} from './drawing';
 
 export class PenTool implements DrawingTool {
-  public init({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  public init({drawingCtx, imageCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
 
-    this.update({ctx, color, size});
+    this.update({drawingCtx, imageCtx, color, size});
   }
 
-  public update({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = size;
+  public update({drawingCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.strokeStyle = color;
+    drawingCtx.lineWidth = size;
   }
 
   public draw({
-    ctx,
+    drawingCtx,
     lastLength,
     workingStrokes
   }: DrawingContext) {
@@ -29,15 +29,15 @@ export class PenTool implements DrawingTool {
 
     const pt0 = workingStrokes[startIndex];
 
-    ctx.beginPath();
-    ctx.moveTo(pt0.x, pt0.y);
+    drawingCtx.beginPath();
+    drawingCtx.moveTo(pt0.x, pt0.y);
 
     for(let j = startIndex; j < lastLength; j++) {
       const pt = workingStrokes[j];
-      ctx.lineTo(pt.x, pt.y);
+      drawingCtx.lineTo(pt.x, pt.y);
     }
 
-    ctx.stroke();
+    drawingCtx.stroke();
   }
 }
 

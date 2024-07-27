@@ -5,25 +5,25 @@ export class NeonTool implements DrawingTool {
   private color: string;
   private size: number;
 
-  public init({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  public init({drawingCtx, imageCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
 
-    this.update({ctx, color, size});
+    this.update({drawingCtx, imageCtx, color, size});
   }
 
-  public update({ctx, color, size}: DrawingToolMethodParams) {
+  public update({drawingCtx, color, size}: DrawingToolMethodParams) {
     this.color = color;
     this.size = size;
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = size;
+    drawingCtx.strokeStyle = color;
+    drawingCtx.fillStyle = color;
+    drawingCtx.lineWidth = size;
   }
 
-  public draw({ctx, workingStrokes}: Partial<DrawingContext>) {
-    if(!ctx || !workingStrokes || workingStrokes.length < 2) return;
+  public draw({drawingCtx, workingStrokes}: Partial<DrawingContext>) {
+    if(!drawingCtx || !workingStrokes || workingStrokes.length < 2) return;
 
-    ctx.save();
+    drawingCtx.save();
 
     const layers = [
       {shadowBlur: 20, shadowColor: this._getShadowColor(this.color, 0.2), lineWidth: this.size + 10},
@@ -32,29 +32,29 @@ export class NeonTool implements DrawingTool {
     ];
 
     layers.forEach(layer => {
-      ctx.lineWidth = layer.lineWidth;
-      ctx.shadowBlur = layer.shadowBlur;
-      ctx.shadowColor = layer.shadowColor;
-      ctx.strokeStyle = this.color;
-      ctx.beginPath();
-      ctx.moveTo(workingStrokes[0].x, workingStrokes[0].y);
+      drawingCtx.lineWidth = layer.lineWidth;
+      drawingCtx.shadowBlur = layer.shadowBlur;
+      drawingCtx.shadowColor = layer.shadowColor;
+      drawingCtx.strokeStyle = this.color;
+      drawingCtx.beginPath();
+      drawingCtx.moveTo(workingStrokes[0].x, workingStrokes[0].y);
       for(let i = 1; i < workingStrokes.length; i++) {
-        ctx.lineTo(workingStrokes[i].x, workingStrokes[i].y);
+        drawingCtx.lineTo(workingStrokes[i].x, workingStrokes[i].y);
       }
-      ctx.stroke();
+      drawingCtx.stroke();
     });
 
-    ctx.lineWidth = this.size;
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = '#fff';
-    ctx.beginPath();
-    ctx.moveTo(workingStrokes[0].x, workingStrokes[0].y);
+    drawingCtx.lineWidth = this.size;
+    drawingCtx.shadowBlur = 0;
+    drawingCtx.strokeStyle = '#fff';
+    drawingCtx.beginPath();
+    drawingCtx.moveTo(workingStrokes[0].x, workingStrokes[0].y);
     for(let i = 1; i < workingStrokes.length; i++) {
-      ctx.lineTo(workingStrokes[i].x, workingStrokes[i].y);
+      drawingCtx.lineTo(workingStrokes[i].x, workingStrokes[i].y);
     }
-    ctx.stroke();
+    drawingCtx.stroke();
 
-    ctx.restore();
+    drawingCtx.restore();
   }
 
   private _getShadowColor(color: string, opacity: number): string {

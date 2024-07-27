@@ -108,11 +108,9 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
       currentTranslateX = offsetX + dx;
       currentTranslateY = offsetY + dy;
 
-      // Boundary checks
       const previewRect = props.previewRef.getBoundingClientRect();
       const entityRect = transformarableEntityRef.getBoundingClientRect();
 
-      // Calculate new position
       const newX = Math.max(0, Math.min(previewRect.width - entityRect.width, currentTranslateX));
       const newY = Math.max(0, Math.min(previewRect.height - entityRect.height, currentTranslateY));
 

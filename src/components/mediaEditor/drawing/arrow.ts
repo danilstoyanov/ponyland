@@ -1,7 +1,7 @@
 import type {DrawingContext, DrawingTool, DrawingToolMethodParams} from './drawing';
 
 function drawArrowhead(
-  context: DrawingContext['ctx'],
+  context: DrawingContext['drawingCtx'],
   stroke: DrawingContext['workingStrokes'],
   brushSize: number
 ) {
@@ -9,15 +9,13 @@ function drawArrowhead(
   const maxPoints = 20;
   const numPoints = Math.min(Math.max(stroke.length - 1, minPoints), maxPoints);
 
-  if(stroke.length < 2) return; // Need at least two points to draw an arrowhead
+  if(stroke.length < 2) return;
 
-  // Get the last N points
   const points = stroke.slice(-numPoints);
   const end = points[points.length - 1];
   let sumX = 0;
   let sumY = 0;
 
-  // Calculate average direction
   for(let i = 0; i < points.length - 1; i++) {
     sumX += points[i + 1].x - points[i].x;
     sumY += points[i + 1].y - points[i].y;
@@ -27,7 +25,6 @@ function drawArrowhead(
   const averageDirectionY = sumY / (points.length - 1);
   const θ = Math.atan2(averageDirectionY, averageDirectionX);
 
-  // Scale the height and base of the arrowhead proportionally to the brush size
   const height = 50 * brushSize / 10;
   const base = 15 * brushSize / 10;
   const α = Math.PI / 2 - θ;
@@ -50,22 +47,22 @@ function drawArrowhead(
 
 
 export class ArrowTool implements DrawingTool {
-  public init({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = size;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  public init({drawingCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.strokeStyle = color;
+    drawingCtx.fillStyle = color;
+    drawingCtx.lineWidth = size;
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
   }
 
-  public update({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = size;
+  public update({drawingCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.strokeStyle = color;
+    drawingCtx.fillStyle = color;
+    drawingCtx.lineWidth = size;
   }
 
   public draw({
-    ctx,
+    drawingCtx,
     lastLength,
     workingStrokes
   }: DrawingContext) {
@@ -80,22 +77,22 @@ export class ArrowTool implements DrawingTool {
 
     const pt0 = workingStrokes[startIndex];
 
-    ctx.beginPath();
-    ctx.moveTo(pt0.x, pt0.y);
+    drawingCtx.beginPath();
+    drawingCtx.moveTo(pt0.x, pt0.y);
 
     for(let j = startIndex; j < lastLength; j++) {
       const pt = workingStrokes[j];
-      ctx.lineTo(pt.x, pt.y);
+      drawingCtx.lineTo(pt.x, pt.y);
     }
 
-    ctx.stroke();
+    drawingCtx.stroke();
   }
 
-  public drawOnEnd({ctx, workingStrokes}: DrawingContext) {
+  public drawOnEnd({drawingCtx, workingStrokes}: DrawingContext) {
     if(workingStrokes.length < 2) {
       return;
     }
 
-    drawArrowhead(ctx, workingStrokes, ctx.lineWidth);
+    drawArrowhead(drawingCtx, workingStrokes, drawingCtx.lineWidth);
   }
 }

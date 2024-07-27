@@ -1,20 +1,20 @@
 import type {DrawingContext, DrawingTool, DrawingToolMethodParams} from './drawing';
 
 export class BrushTool implements DrawingTool {
-  public init({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  public init({drawingCtx, imageCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.lineCap = 'round';
+    drawingCtx.lineJoin = 'round';
 
-    this.update({ctx, color, size});
+    this.update({drawingCtx, imageCtx, color, size});
   }
 
-  public update({ctx, color, size}: DrawingToolMethodParams) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = size;
+  public update({drawingCtx, color, size}: DrawingToolMethodParams) {
+    drawingCtx.strokeStyle = color;
+    drawingCtx.lineWidth = size;
   }
 
   public draw({
-    ctx,
+    drawingCtx,
     lastLength,
     workingStrokes
   }: DrawingContext) {
@@ -33,15 +33,15 @@ export class BrushTool implements DrawingTool {
       const offsetX = [-4, -2, 0, 2, 4][i];
       const offsetY = [-4, -2, 0, 2, 4][i];
 
-      ctx.beginPath();
-      ctx.moveTo(pt0.x + offsetX, pt0.y + offsetY);
+      drawingCtx.beginPath();
+      drawingCtx.moveTo(pt0.x + offsetX, pt0.y + offsetY);
 
       for(let j = startIndex; j < lastLength; j++) {
         const pt = workingStrokes[j];
-        ctx.lineTo(pt.x + offsetX, pt.y + offsetY);
+        drawingCtx.lineTo(pt.x + offsetX, pt.y + offsetY);
       }
 
-      ctx.stroke();
+      drawingCtx.stroke();
     }
   }
 }

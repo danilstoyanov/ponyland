@@ -1,12 +1,14 @@
 export interface DrawingContext {
-  ctx: CanvasRenderingContext2D;
+  drawingCtx: CanvasRenderingContext2D;
+  imageCtx: CanvasRenderingContext2D;
   strokes: { x: number; y: number }[][];
   workingStrokes: { x: number; y: number }[];
   lastLength: number;
 }
 
 export type DrawingToolMethodParams = {
-  ctx: CanvasRenderingContext2D;
+  drawingCtx: CanvasRenderingContext2D;
+  imageCtx: CanvasRenderingContext2D;
   color: string;
   size: number;
 }
@@ -15,12 +17,15 @@ export interface DrawingTool {
   init(params: DrawingToolMethodParams): void;
   update(params: DrawingToolMethodParams): void;
   draw(params: Partial<DrawingContext>): void;
+  drawOnStart?(params: Partial<DrawingContext>): void;
   drawOnEnd?(params: Partial<DrawingContext>): void;
 }
 
 export class DrawingManager {
-  private canvas: HTMLCanvasElement;
-  private ctx: CanvasRenderingContext2D;
+  private drawingCanvas: HTMLCanvasElement;
+  private drawingCanvasCtx: CanvasRenderingContext2D;
+  private imageCanvas: HTMLCanvasElement;
+  private imageCanvasCtx: CanvasRenderingContext2D;
   private strokes: { x: number; y: number }[][];
   private workingStrokes: { x: number; y: number }[];
   private lastLength: number;
@@ -35,9 +40,13 @@ export class DrawingManager {
   private boundMove: (event: MouseEvent) => void;
   private boundEnd: (event: MouseEvent) => void;
 
-  constructor(canvas: HTMLCanvasElement, preview: HTMLDivElement) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+  constructor(drawingCanvas: HTMLCanvasElement, imageCanvas: HTMLCanvasElement, preview: HTMLDivElement) {
+    this.drawingCanvas = drawingCanvas;
+    this.imageCanvas = imageCanvas;
+
+    this.drawingCanvasCtx = drawingCanvas.getContext('2d');
+    this.imageCanvasCtx = imageCanvas.getContext('2d');
+
     this.strokes = [];
     this.workingStrokes = [];
     this.lastLength = 0;
@@ -59,7 +68,12 @@ export class DrawingManager {
   activate(drawingTool: DrawingTool, color: string, size: number) {
     this._updateOffsets();
     this.drawingTool = drawingTool;
-    this.drawingTool.init({ctx: this.ctx, color, size});
+    this.drawingTool.init({
+      drawingCtx: this.drawingCanvasCtx,
+      imageCtx: this.imageCanvasCtx,
+      color,
+      size
+    });
     this._initEvents();
   }
 
@@ -70,7 +84,12 @@ export class DrawingManager {
   }
 
   update({color, size}: Partial<{ color: string, size: number }>) {
-    this.drawingTool.update({ctx: this.ctx, color, size});
+    this.drawingTool.update({
+      drawingCtx: this.drawingCanvasCtx,
+      imageCtx: this.imageCanvasCtx,
+      color,
+      size
+    });
   }
 
   private _start(event: MouseEvent) {
@@ -81,6 +100,14 @@ export class DrawingManager {
     this.lastLength = 1;
     this.isTouching = true;
     requestAnimationFrame(this._draw.bind(this));
+
+    if(this.drawingTool.drawOnStart) {
+      this.drawingTool.drawOnStart({
+        imageCtx: this.imageCanvasCtx,
+        drawingCtx: this.drawingCanvasCtx,
+        workingStrokes: this.workingStrokes
+      });
+    }
   }
 
   private _move(event: MouseEvent) {
@@ -100,34 +127,36 @@ export class DrawingManager {
 
     if(this.drawingTool.drawOnEnd) {
       this.drawingTool.drawOnEnd({
-        ctx: this.ctx,
+        imageCtx: this.imageCanvasCtx,
+        drawingCtx: this.drawingCanvasCtx,
         workingStrokes: this.workingStrokes
       });
     }
   }
 
   private _initEvents() {
-    this.canvas.addEventListener('mousedown', this.boundStart);
-    this.canvas.addEventListener('mousemove', this.boundMove);
-    this.canvas.addEventListener('mouseup', this.boundEnd);
+    this.drawingCanvas.addEventListener('mousedown', this.boundStart);
+    this.drawingCanvas.addEventListener('mousemove', this.boundMove);
+    this.drawingCanvas.addEventListener('mouseup', this.boundEnd);
   }
 
   private _resetContext() {
-    this.ctx.strokeStyle = '#000';
-    this.ctx.lineWidth = 1;
-    this.ctx.lineCap = 'butt';
-    this.ctx.lineJoin = 'miter';
+    this.drawingCanvasCtx.strokeStyle = '#000';
+    this.drawingCanvasCtx.lineWidth = 1;
+    this.drawingCanvasCtx.lineCap = 'butt';
+    this.drawingCanvasCtx.lineJoin = 'miter';
   }
 
   private _removeEvents() {
-    this.canvas.removeEventListener('mousedown', this.boundStart);
-    this.canvas.removeEventListener('mousemove', this.boundMove);
-    this.canvas.removeEventListener('mouseup', this.boundEnd);
+    this.drawingCanvas.removeEventListener('mousedown', this.boundStart);
+    this.drawingCanvas.removeEventListener('mousemove', this.boundMove);
+    this.drawingCanvas.removeEventListener('mouseup', this.boundEnd);
   }
 
   private _draw() {
     this.drawingTool.draw({
-      ctx: this.ctx,
+      drawingCtx: this.drawingCanvasCtx,
+      imageCtx: this.imageCanvasCtx,
       strokes: this.strokes,
       workingStrokes: this.workingStrokes,
       lastLength: this.lastLength
