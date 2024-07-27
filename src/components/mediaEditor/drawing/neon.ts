@@ -1,6 +1,9 @@
 import type {DrawingContext, DrawingTool, DrawingToolMethodParams} from './drawing';
 
 export class NeonTool implements DrawingTool {
+  private color: string;
+  private size: number;
+
   public init({ctx, color, size}: DrawingToolMethodParams) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -9,39 +12,82 @@ export class NeonTool implements DrawingTool {
   }
 
   public update({ctx, color, size}: DrawingToolMethodParams) {
+    this.color = color;
+    this.size = size;
     ctx.strokeStyle = color;
     ctx.fillStyle = color;
     ctx.lineWidth = size;
   }
 
-  public draw({ctx, strokes}: DrawingContext) {
-    // Setup context for neon effect
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 10;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
+  public draw({ctx, workingStrokes}: Partial<DrawingContext>) {
+    if(!ctx || !workingStrokes || workingStrokes.length < 2) return;
 
-    // Draw each stroke with neon effect
-    for(let i = 0; i < strokes.length; i++) {
-      const stroke = strokes[i];
+    ctx.save();
 
-      // Apply neon effect to the latest stroke only
-      if(i === strokes.length - 1 && stroke.length > 1) {
-        // Setup neon effect with increased shadow opacity
-        ctx.shadowBlur = 6;
-        ctx.shadowColor = 'rgba(98, 229, 224, 0.8)'; // Higher opacity cyan shadow
-      } else {
-        // Reset shadow effect for previous strokes
-        ctx.shadowBlur = 0;
-        ctx.shadowColor = 'transparent';
-      }
+    const layers = [
+      {shadowBlur: 20, shadowColor: this._getShadowColor(this.color, 0.2), lineWidth: this.size + 10},
+      {shadowBlur: 15, shadowColor: this._getShadowColor(this.color, 0.4), lineWidth: this.size + 5},
+      {shadowBlur: 10, shadowColor: this._getShadowColor(this.color, 0.6), lineWidth: this.size + 3}
+    ];
 
+    layers.forEach(layer => {
+      ctx.lineWidth = layer.lineWidth;
+      ctx.shadowBlur = layer.shadowBlur;
+      ctx.shadowColor = layer.shadowColor;
+      ctx.strokeStyle = this.color;
       ctx.beginPath();
-      ctx.moveTo(stroke[0].x, stroke[0].y);
-      for(let j = 1; j < stroke.length; j++) {
-        ctx.lineTo(stroke[j].x, stroke[j].y);
+      ctx.moveTo(workingStrokes[0].x, workingStrokes[0].y);
+      for(let i = 1; i < workingStrokes.length; i++) {
+        ctx.lineTo(workingStrokes[i].x, workingStrokes[i].y);
       }
       ctx.stroke();
+    });
+
+    ctx.lineWidth = this.size;
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(workingStrokes[0].x, workingStrokes[0].y);
+    for(let i = 1; i < workingStrokes.length; i++) {
+      ctx.lineTo(workingStrokes[i].x, workingStrokes[i].y);
     }
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  private _getShadowColor(color: string, opacity: number): string {
+    const [r, g, b] = this._colorToRgb(color);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+
+  private _colorToRgb(color: string): [number, number, number] {
+    if(color.startsWith('#')) {
+      return this._hexToRgb(color);
+    } else if(color.startsWith('rgb')) {
+      return this._rgbStringToRgb(color);
+    }
+    throw new Error(`Unsupported color format: ${color}`);
+  }
+
+  private _hexToRgb(hex: string): [number, number, number] {
+    let r = 0, g = 0, b = 0;
+    if(hex.length === 4) {
+      r = parseInt(hex[1] + hex[1], 16);
+      g = parseInt(hex[2] + hex[2], 16);
+      b = parseInt(hex[3] + hex[3], 16);
+    } else if(hex.length === 7) {
+      r = parseInt(hex[1] + hex[2], 16);
+      g = parseInt(hex[3] + hex[4], 16);
+      b = parseInt(hex[5] + hex[6], 16);
+    }
+    return [r, g, b];
+  }
+
+  private _rgbStringToRgb(rgb: string): [number, number, number] {
+    const result = rgb.match(/\d+/g);
+    if(!result) throw new Error(`Invalid rgb format: ${rgb}`);
+    const [r, g, b] = result.map(Number);
+    return [r, g, b];
   }
 }

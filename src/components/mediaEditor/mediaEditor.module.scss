@@ -14,7 +14,6 @@
    * we add some empty black space from both sides width this property
    * one side is 15%, so we subtract 30% from default width of preview
    */
-
   position: fixed;
   top: 0;
   right: 0;
@@ -74,17 +73,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    // background-color: green;
   }
 
   &Background {
+    content: " ";
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
     left: 0;
     background-color: rgba(0, 0, 0, .9);
-    content: " ";
     pointer-events: none;
 
     :global(html.night) & {
@@ -216,6 +214,15 @@
           &Settings {
             padding-top: 16px;
           }
+        }
+
+        &Drawing {
+          height: 100%;
+          padding-inline: 8px;
+          padding-block: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
         }
       };
     }

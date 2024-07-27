@@ -1,7 +1,7 @@
 export interface DrawingContext {
   ctx: CanvasRenderingContext2D;
-  strokes: {x: number; y: number}[][];
-  workingStrokes: {x: number; y: number}[];
+  strokes: { x: number; y: number }[][];
+  workingStrokes: { x: number; y: number }[];
   lastLength: number;
 }
 
@@ -21,28 +21,43 @@ export interface DrawingTool {
 export class DrawingManager {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
-  private strokes: {x: number; y: number}[][];
-  private workingStrokes: {x: number; y: number}[];
+  private strokes: { x: number; y: number }[][];
+  private workingStrokes: { x: number; y: number }[];
   private lastLength: number;
   private isTouching: boolean;
   private drawingTool: DrawingTool;
 
   private offsetX: number;
   private offsetY: number;
+  private preview: HTMLDivElement;
+
+  private boundStart: (event: MouseEvent) => void;
+  private boundMove: (event: MouseEvent) => void;
+  private boundEnd: (event: MouseEvent) => void;
 
   constructor(canvas: HTMLCanvasElement, preview: HTMLDivElement) {
-    this.offsetX = preview.offsetLeft;
-    this.offsetY = preview.offsetTop;
-
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.strokes = [];
     this.workingStrokes = [];
     this.lastLength = 0;
     this.isTouching = false;
+    this.preview = preview;
+
+    this._updateOffsets();
+
+    this.boundStart = this._start.bind(this);
+    this.boundMove = this._move.bind(this);
+    this.boundEnd = this._end.bind(this);
+  }
+
+  private _updateOffsets() {
+    this.offsetX = this.preview.offsetLeft;
+    this.offsetY = this.preview.offsetTop;
   }
 
   activate(drawingTool: DrawingTool, color: string, size: number) {
+    this._updateOffsets();
     this.drawingTool = drawingTool;
     this.drawingTool.init({ctx: this.ctx, color, size});
     this._initEvents();
@@ -54,7 +69,7 @@ export class DrawingManager {
     this._resetContext();
   }
 
-  update({color, size}: Partial<{color: string, size: number}>) {
+  update({color, size}: Partial<{ color: string, size: number }>) {
     this.drawingTool.update({ctx: this.ctx, color, size});
   }
 
@@ -92,22 +107,22 @@ export class DrawingManager {
   }
 
   private _initEvents() {
-    this.canvas.addEventListener('mousedown', this._start.bind(this));
-    this.canvas.addEventListener('mousemove', this._move.bind(this));
-    this.canvas.addEventListener('mouseup', this._end.bind(this));
+    this.canvas.addEventListener('mousedown', this.boundStart);
+    this.canvas.addEventListener('mousemove', this.boundMove);
+    this.canvas.addEventListener('mouseup', this.boundEnd);
   }
 
   private _resetContext() {
-    this.ctx.strokeStyle = '#000'; // Default stroke color is black
-    this.ctx.lineWidth = 1; // Default line width is 1 pixel
-    this.ctx.lineCap = 'butt'; // Default line cap is 'butt'
-    this.ctx.lineJoin = 'miter'; // Default line join is 'miter'
+    this.ctx.strokeStyle = '#000';
+    this.ctx.lineWidth = 1;
+    this.ctx.lineCap = 'butt';
+    this.ctx.lineJoin = 'miter';
   }
 
   private _removeEvents() {
-    this.canvas.removeEventListener('mousedown', this._start);
-    this.canvas.removeEventListener('mousemove', this._move);
-    this.canvas.removeEventListener('mouseup', this._end);
+    this.canvas.removeEventListener('mousedown', this.boundStart);
+    this.canvas.removeEventListener('mousemove', this.boundMove);
+    this.canvas.removeEventListener('mouseup', this.boundEnd);
   }
 
   private _draw() {

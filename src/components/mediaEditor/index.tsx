@@ -144,15 +144,26 @@ type MediaEditorRangeSelectorProps = RangeSelectorProps & {
 
 const MediaEditorRangeSelector = (props: MediaEditorRangeSelectorProps) => {
   const [local, others] = splitProps(props, ['label']);
+
+  const [initialValue, setInitialValue] = createSignal(props.value);
   const [currentValue, setCurrentValue] = createSignal(props.value);
 
   const handleValueChange = (value: number) => {
-    setCurrentValue(value);
-
     if(others.onScrub) {
       others.onScrub(value);
+      setCurrentValue(value);
     }
   };
+
+  createEffect(() => {
+    if(props.value !== currentValue()) {
+      setCurrentValue(props.value);
+    }
+  });
+
+  onMount(() => {
+    setInitialValue(props.value);
+  });
 
   return (
     <div class={styles.MediaEditorRangeSelector}>
@@ -162,7 +173,7 @@ const MediaEditorRangeSelector = (props: MediaEditorRangeSelectorProps) => {
         </div>
         <div classList={{
           [styles.MediaEditorRangeSelectorLegendValue]: true,
-          [styles.MediaEditorRangeSelectorLegendValueDefault]: currentValue() === props.value
+          [styles.MediaEditorRangeSelectorLegendValueDefault]: initialValue() === currentValue()
         }}>
           {currentValue()}
         </div>
@@ -170,8 +181,8 @@ const MediaEditorRangeSelector = (props: MediaEditorRangeSelectorProps) => {
 
       <div classList={{
         [styles.MediaEditorRangeSelectorTrack]: true,
-        [styles.MediaEditorRangeSelectorTrackInitial]: others.min === currentValue(),
-        [styles.MediaEditorRangeSelectorTrackFilled]: others.max === currentValue()
+        [styles.MediaEditorRangeSelectorTrackInitial]: others.min === props.value,
+        [styles.MediaEditorRangeSelectorTrackFilled]: others.max === props.value
       }}>
         <RangeSelectorTsx {...others} onScrub={handleValueChange} />
       </div>
@@ -239,7 +250,6 @@ const MediaEditorColorPicker = (props: MediaEditorColorPickerProps) => {
           }}
           onClick={handleCustomColorToggleClick}
         >
-
           <div
             style={{
               '--color-picker-tabs-custom-circle-color': currentColor() ?? 'transparent'
@@ -459,7 +469,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
 
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
+  // const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
+
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
+
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
@@ -1079,12 +1092,20 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   const setToolColor = (color: MediaEditorTool['color']) => {
     setState('tools', state.selectedToolId, {color});
-    DrawingManagerInstance.update({color});
+
+    DrawingManagerInstance.update({
+      size: state.tools[state.selectedToolId].size,
+      color
+    });
   };
 
   const setToolSize = (size: MediaEditorTool['size']) => {
     setState('tools', state.selectedToolId, {size});
-    DrawingManagerInstance.update({size});
+
+    DrawingManagerInstance.update({
+      color: state.tools[state.selectedToolId].color,
+      size
+    });
   };
 
   // * Entity Handlers
@@ -1162,8 +1183,9 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const imageLayerCtx = imageLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
 
-    // Save the current state of both layers
-    const drawingLayerData = drawingLayerCtx.getImageData(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+    // Save the current state of the drawing layer as an image
+    const drawingLayerImage = new Image();
+    drawingLayerImage.src = drawingLayerCanvas.toDataURL();
 
     const oldDimensions = {
       width: previewContentRef.offsetWidth,
@@ -1192,15 +1214,18 @@ export const MediaEditor = (props: MediaEditorProps) => {
       imageLayerCtx.drawImage(workareaImage, 0, 0, dimensions.width, dimensions.height);
     }
 
-    // Clear and restore the drawing layer
-    if(drawingLayerCtx) {
-      drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
-      drawingLayerCtx.putImageData(drawingLayerData, 0, 0);
-    }
+    // Clear and restore the drawing layer with the scaled image
+    drawingLayerImage.onload = () => {
+      if(drawingLayerCtx) {
+        drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
+        drawingLayerCtx.drawImage(drawingLayerImage, 0, 0, oldDimensions.width, oldDimensions.height, 0, 0, dimensions.width, dimensions.height);
+      }
+    };
 
     const scaleX = dimensions.width / oldDimensions.width;
     const scaleY = dimensions.height / oldDimensions.height;
 
+    // Update coordinates of text entities
     setState('entities', (entities) => {
       return entities.map(entity => ({
         ...entity,
@@ -1258,9 +1283,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
       const ctx = imageLayerCanvas.getContext('2d');
       ctx.drawImage(image, 0, 0, dimensions.width, dimensions.height);
 
-      // DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
-      // DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
-
       appDownloadManager.construct(rootScope.managers);
 
       // await setupStickers();
@@ -1311,6 +1333,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
       image.src = png;
     }
 
+    DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
+    // DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
+    // DrawingManagerInstance.deactivate();
+
+    // DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
+
+
     // setTimeout(() => {
     // renderMedia();
     // document.querySelector('[data-ref="0"]')?.remove();
@@ -1325,9 +1354,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
   const handleMediaEditorCloseClick = () => {
     props.onClose();
   };
-
-  // imageLayerCanvas // HTMLCanvasElement
-  // console.log('RENDER MEDIA FOR TEST');
 
   const renderMediaForTest = () => {
     const ctx = imageLayerCanvas.getContext('2d');
@@ -1499,6 +1525,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
         a.download = 'recorded.mp4';
         document.body.appendChild(a);
         a.click();
+
         setTimeout(() => {
           document.body.removeChild(a);
           window.URL.revokeObjectURL(url);
@@ -1514,17 +1541,17 @@ export const MediaEditor = (props: MediaEditorProps) => {
     window.removeEventListener('resize', handleWindowResize);
   });
 
-  createEffect(() => {
-    console.log('state.entities: ', state.entities.length, unwrap(state.entities));
-  })
-
-  // createEffect(on(activeTab, () => {
-  // if(previewDimensions()) {
-  // console.log('previewDimensions(): ', previewDimensions());
-  // previewContentRef.style.width = `${previewDimensions().width}px`;
-  // previewContentRef.style.height = `${previewDimensions().height}px`;
-  // }
-  // }));
+  createEffect(on(activeTab, () => {
+    if(activeTab() === 'brush') {
+      DrawingManagerInstance.activate(
+        state.tools[state.selectedToolId].instance,
+        state.tools[state.selectedToolId].color,
+        state.tools[state.selectedToolId].size
+      );
+    } else {
+      DrawingManagerInstance.deactivate();
+    }
+  }));
 
   return (
     <div class={styles.MediaEditor}>
@@ -1617,13 +1644,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
           </div>
 
           {activeTab() === 'crop' && (
-            // <div id="previewContentRef" class={styles.MediaEditorCropContent} ref={previewContentRef}>
             <Crop
               state={state.crop}
               image={cropPreview()}
               onCropChange={onCropChange}
             />
-            // </div>
           )}
         </div>
 
@@ -1967,8 +1992,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
                         min={10}
                         max={64}
                         step={1}
-                        value={(state.entities[state.selectedEntityId] as TextEntityType)?.fontSize ?? DEFAULT_FONT_SIZE}
                         onScrub={setTextEntityFontSize}
+                        value={(state.entities[state.selectedEntityId] as TextEntityType)?.fontSize ?? DEFAULT_FONT_SIZE}
                         style={{
                           '--color': `${(state.entities[state.selectedEntityId] as TextEntityType)?.color ?? DEFAULT_FONT_COLOR}`
                         }}
@@ -2002,70 +2027,77 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
               {activeTab() === 'brush' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
-                  <div class={styles.MediaEditorSidebarTabsContentTabPanelTextRow}>
-                    <MediaEditorColorPicker onChange={(color) => setToolColor(color.rgba)} />
+                  <div class={styles.MediaEditorSidebarTabsContentTabPanelDrawing}>
+                    <div class={styles.MediaEditorSidebarTabsContentTabPanelTextRow}>
+                      <MediaEditorColorPicker onChange={(color) => setToolColor(color.rgba)} />
+                    </div>
+
+                    <MediaEditorRangeSelector
+                      label="Size"
+                      min={10}
+                      max={48}
+                      step={1}
+                      value={state.tools[state.selectedToolId].size}
+                      onScrub={setToolSize}
+                      style={{
+                        '--color': state.tools[state.selectedToolId].color
+                      }}
+                    />
+
+                    <div>
+                      <div class={styles.MediaEditorSidebarSectionHeader}>
+                        Tool
+                      </div>
+
+                      <MediaEditorTool
+                        title="Pen"
+                        color={state.tools[0].color}
+                        svg={<PenSvg />}
+                        isSelected={state.selectedToolId === 0}
+                        onClick={() => selectTool(0)}
+                      />
+
+                      <MediaEditorTool
+                        title="Arrow"
+                        color={state.tools[1].color}
+                        svg={<ArrowSvg />}
+                        isSelected={state.selectedToolId === 1}
+                        onClick={() => selectTool(1)}
+                      />
+
+                      <MediaEditorTool
+                        title="Brush"
+                        color={state.tools[2].color}
+                        svg={<BrushSvg />}
+                        isSelected={state.selectedToolId === 2}
+                        onClick={() => selectTool(2)}
+                      />
+
+                      <MediaEditorTool
+                        title="Neon"
+                        color={state.tools[3].color}
+                        svg={<NeonBrushSvg />}
+                        isSelected={state.selectedToolId === 3}
+                        onClick={() => selectTool(3)}
+                      />
+
+                      <MediaEditorTool
+                        title="Blur"
+                        color={state.tools[4].color}
+                        svg={<BlurSvg />}
+                        isSelected={state.selectedToolId === 4}
+                        onClick={() => selectTool(4)}
+                      />
+
+                      <MediaEditorTool
+                        title="Eraser"
+                        color={state.tools[5].color}
+                        svg={<EraserSvg />}
+                        isSelected={state.selectedToolId === 5}
+                        onClick={() => selectTool(5)}
+                      />
+                    </div>
                   </div>
-
-                  <MediaEditorRangeSelector
-                    label="Size"
-                    min={10}
-                    max={48}
-                    step={1}
-                    value={14}
-                    onScrub={(value) => setToolSize(value)}
-                  />
-
-                  <div class={styles.MediaEditorSidebarSectionHeader}>
-                    Tool
-                  </div>
-
-                  <MediaEditorTool
-                    title="Pen"
-                    color={state.tools[0].color}
-                    svg={<PenSvg />}
-                    isSelected={state.selectedToolId === 0}
-                    onClick={() => selectTool(0)}
-                  />
-
-                  <MediaEditorTool
-                    title="Arrow"
-                    color={state.tools[1].color}
-                    svg={<ArrowSvg />}
-                    isSelected={state.selectedToolId === 1}
-                    onClick={() => selectTool(1)}
-                  />
-
-                  <MediaEditorTool
-                    title="Brush"
-                    color={state.tools[2].color}
-                    svg={<BrushSvg />}
-                    isSelected={state.selectedToolId === 2}
-                    onClick={() => selectTool(2)}
-                  />
-
-                  <MediaEditorTool
-                    title="Neon"
-                    color={state.tools[3].color}
-                    svg={<NeonBrushSvg />}
-                    isSelected={state.selectedToolId === 3}
-                    onClick={() => selectTool(3)}
-                  />
-
-                  <MediaEditorTool
-                    title="Blur"
-                    color={state.tools[4].color}
-                    svg={<BlurSvg />}
-                    isSelected={state.selectedToolId === 4}
-                    onClick={() => selectTool(4)}
-                  />
-
-                  <MediaEditorTool
-                    title="Eraser"
-                    color={state.tools[5].color}
-                    svg={<EraserSvg />}
-                    isSelected={state.selectedToolId === 5}
-                    onClick={() => selectTool(5)}
-                  />
                 </div>
               )}
 
