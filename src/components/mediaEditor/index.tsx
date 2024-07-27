@@ -13,6 +13,7 @@ import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
 import main_canvas_png from './main-canvas.png';
+import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
 // import png from './with_footer.png';
 import img_crop_debugger from './CROP_DEBUGGER.png';
 import img_200x200_1_1 from './200x200_1_1.png';
@@ -51,6 +52,8 @@ import ResizeableImage from './resizeableImage';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
 import wrapSticker from '../wrappers/sticker';
+import ProgressivePreloader from '../preloader';
+import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -69,7 +72,7 @@ type MediaEditorTab = 'enhance'
   | 'crop'
   | 'text'
   | 'brush'
-  | 'smile';
+  | 'sticker';
 
 type ToolType = 'pen'
   | 'arrow'
@@ -111,29 +114,6 @@ export interface MediaEditorCropState {
   isFlipped: boolean;
   isApplied: boolean;
   aspectRatio: CropAspectRatio;
-}
-
-const createRandomColorImage = () => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-
-  const ctx = canvas.getContext('2d');
-
-  // Generate a random color
-  const r = Math.floor(Math.random() * 256);
-  const g = Math.floor(Math.random() * 256);
-  const b = Math.floor(Math.random() * 256);
-
-  // Set the fill color and fill the canvas
-  ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-  ctx.fillRect(0, 0, 128, 128);
-
-  // Create a new image
-  const img = new Image(128, 128);
-  img.src = canvas.toDataURL();
-
-  return img;
 }
 
 type MediaEditorRangeSelectorProps = RangeSelectorProps & {
@@ -335,12 +315,15 @@ type MediaEditorProps = {
 
 export const MediaEditor = (props: MediaEditorProps) => {
   let previewRef: HTMLDivElement;
+  let loaderRef: HTMLDivElement;
   let previewContentRef: HTMLDivElement;
   let stickerTabRef: HTMLDivElement;
   let imageLayerCanvas: HTMLCanvasElement;
   let drawingLayerCanvas: HTMLCanvasElement;
-  let DrawingManagerInstance: DrawingManager;
   let workareaImage: ImageBitmap;
+
+  let DrawingManagerInstance: DrawingManager;
+  let ProgressivePreloaderInstance: ProgressivePreloader;
 
   const DEFAULT_FONT_SIZE = 48;
 
@@ -465,9 +448,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
     isProcessing: false
   };
 
+  const [isLoading, setIsLoading] = createSignal<boolean>(false);
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('sticker');
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('smile');
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
 
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
@@ -921,7 +905,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     const isResultImage = true;
 
-    const renderVideo = async() => {
+    const renderAnimatedSticker = async() => {
       const stickers = state.entities.filter(item => item.type === 'sticker');
 
       const captureFrames = (stickerCanvas: HTMLCanvasElement, duration: number, fps: number) => {
@@ -1074,8 +1058,236 @@ export const MediaEditor = (props: MediaEditorProps) => {
       }
     };
 
+    const renderAnimatedStickerFromVideo = async() => {
+      const stickers = state.entities.filter(item => item.type === 'sticker');
+
+      const captureFramesFromVideo = (videoElement, duration, fps) => {
+        return new Promise(async(resolve) => {
+          const capturedFrames = [];
+          let framesCaptured = 0;
+          const captureInterval = 1000 / fps; // Interval in milliseconds
+
+          const processVideoTrack = async() => {
+            const stream = videoElement.captureStream();
+            const [track] = stream.getVideoTracks();
+            const processor = new window.VideoFrameProcessor(track);
+
+            processor.addEventListener('videoframe', async({frame}) => {
+              const canvas = document.createElement('canvas');
+              canvas.width = 200;
+              canvas.height = 200;
+              const context = canvas.getContext('2d');
+
+              context.drawImage(frame, 0, 0, frame.displayWidth, frame.displayHeight, 0, 0, canvas.width, canvas.height);
+              const blob = await new Promise(resolve => canvas.toBlob(resolve));
+              const bitmap = await createImageBitmap(blob);
+
+              capturedFrames.push(bitmap);
+              framesCaptured++;
+
+              if(framesCaptured >= (duration / captureInterval)) {
+                processor.close();
+                resolve(capturedFrames);
+              }
+            });
+
+            processor.start();
+          };
+
+          videoElement.currentTime = 0;
+          videoElement.play();
+          await processVideoTrack();
+        });
+      };
+
+      const createVideoFromFrames = (frames, fps) => {
+        return new Promise((resolve) => {
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+
+          if(!context) {
+            throw new Error('Failed to get 2D context');
+          }
+
+          canvas.width = frames[0].width;
+          canvas.height = frames[0].height;
+
+          const stream = canvas.captureStream();
+          const recordedBlobs = [];
+          const options = {mimeType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'};
+          let mediaRecorder;
+
+          try {
+            mediaRecorder = new MediaRecorder(stream, options);
+          } catch(e0) {
+            console.error('Exception while creating MediaRecorder:', e0);
+            return;
+          }
+
+          mediaRecorder.onstop = (event) => {
+            console.log('Recorder stopped:', event);
+            const superBuffer = new Blob(recordedBlobs, {type: 'video/mp4'});
+            resolve(superBuffer);
+          };
+
+          mediaRecorder.ondataavailable = (event) => {
+            if(event.data && event.data.size > 0) {
+              recordedBlobs.push(event.data);
+            }
+          };
+
+          mediaRecorder.start();
+
+          let frameIndex = 0;
+          const drawNextFrame = () => {
+            if(frameIndex >= frames.length) {
+              mediaRecorder.stop();
+              return;
+            }
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(frames[frameIndex], 0, 0);
+            frameIndex++;
+            setTimeout(drawNextFrame, 1000 / fps);
+          };
+
+          drawNextFrame();
+        });
+      };
+
+      const captureAllStickerFrames = async(stickers) => {
+        const promises = stickers.map((sticker) => {
+          const videoElement = sticker.container.querySelector('video');
+          return captureFramesFromVideo(videoElement, 3000, 60);
+        });
+        return Promise.all(promises);
+      };
+
+      const composeFramesWithBackground = (backgroundCtx, stickerFrames, stickers) => {
+        const framesWithBackground = [];
+
+        for(let i = 0; i < stickerFrames[0].length; i++) {
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = backgroundCtx.canvas.width;
+          tempCanvas.height = backgroundCtx.canvas.height;
+          const tempCtx = tempCanvas.getContext('2d');
+
+          // Draw the background
+          tempCtx.drawImage(backgroundCtx.canvas, 0, 0);
+
+          // Draw each sticker frame at its respective position
+          stickers.forEach((sticker, index) => {
+            const frame = stickerFrames[index][i];
+            tempCtx.drawImage(frame, sticker.x, sticker.y, 200, 200);
+          });
+
+          // Convert the result to an ImageBitmap and store it
+          framesWithBackground.push(tempCanvas);
+        }
+
+        return framesWithBackground;
+      };
+
+      const imageLayerCanvasCtx = imageLayerCanvas.getContext('2d');
+
+      if(imageLayerCanvasCtx) {
+        const stickerFrames = await captureAllStickerFrames(stickers);
+        const framesWithBackgroundCanvases = composeFramesWithBackground(imageLayerCanvasCtx, stickerFrames, stickers);
+
+        // Convert canvases to ImageBitmap
+        const framesWithBackgroundPromises = framesWithBackgroundCanvases.map(canvas => {
+          return new Promise((resolve) => {
+            canvas.toBlob((blob) => {
+              createImageBitmap(blob).then((bitmap) => {
+                resolve(bitmap);
+              });
+            });
+          });
+        });
+
+        const framesWithBackground = await Promise.all(framesWithBackgroundPromises);
+
+        createVideoFromFrames(framesWithBackground, 60).then((videoBlob) => {
+          const url = window.URL.createObjectURL(videoBlob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = 'recorded.mp4';
+          document.body.appendChild(a);
+          a.click();
+
+          setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          }, 100);
+
+          console.log('Frames with background:', framesWithBackground);
+          console.log('Stickers:', stickers);
+        });
+      }
+    };
+
+
+    const renderImageSticker = async(sticker: StickerEntityType) => {
+      const image = sticker.container.querySelector('img');
+      // const imageLayerCanvasCtx = imageLayerCanvas.getContext('2d');
+
+      // resultCtx
+
+      try {
+        // Load the image from the blob URL
+        const imageUrl = image.src;
+        const img = new Image();
+        img.src = imageUrl;
+
+        // Ensure the image is fully loaded before rendering
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+
+        // Draw the image to the canvas using the coordinates from the sticker entity
+        resultCtx.drawImage(
+          img,
+          sticker.x,
+          sticker.y,
+          sticker.width === 'auto' ? img.width : sticker.width,
+          sticker.height === 'auto' ? img.height : sticker.height
+        );
+
+        console.log('==============================');
+        console.log('img.width: ', img.width, 'img.height: ', img.height);
+        console.log('sticker.width: ', sticker.width, 'sticker.height: ', sticker.height);
+        console.log('==============================');
+      } catch(error) {
+        console.error('Failed to load or render image:', error);
+      }
+    };
+
     if(state.entities.some(entity => entity.type === 'sticker')) {
-      await renderVideo();
+      // await renderVideo();
+
+      const imgStickers = state.entities.filter((entity) => entity.type === 'sticker');
+
+      // console.log('imgStickers: ', imgStickers[0]);
+
+      // debugger;
+
+      // for(const sticker of imgStickers) {
+      //   await renderImageSticker(sticker as StickerEntityType);
+      // }
+
+      await renderAnimatedStickerFromVideo();
+
+      // resultCanvas.toBlob(async(blob) => {
+      //   const dataUrl = await readBlobAsDataURL(blob);
+      //   const downloadLink = document.createElement('a');
+      //   // @ts-ignore
+      //   downloadLink.href = dataUrl;
+      //   downloadLink.download = 'result-image.png';
+      //   downloadLink.click();
+      // }, 'image/png');
+
+      // console.log('state.entities: ');
     } else {
       // Convert the result canvas to a Blob and create a download link
       resultCanvas.toBlob(async(blob) => {
@@ -1086,7 +1298,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
         downloadLink.download = 'result-image.png';
         downloadLink.click();
       }, 'image/png');
-    }
+    };
   };
 
   const renderMediaForCrop = (angle: number) => {
@@ -1275,7 +1487,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     setState({selectedEntityId: id});
   };
 
-  const addStickerEntity = (container: StickerEntityType['container'], docId: StickerEntityType['docId']) => {
+  const addStickerEntity = (container: StickerEntityType['container'], docId: StickerEntityType['docId'], stickerType: StickerEntityType['stickerType']) => {
     setState('entities', state.entities.length, {
       id: state.entities.length,
       x: 100,
@@ -1285,6 +1497,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
       rotate: 0,
       type: 'sticker',
       docId,
+      stickerType,
       container
     });
   };
@@ -1411,6 +1624,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
           handleStickerClick: async(target: any) => {
             const doc = await rootScope.managers.appDocsManager.getDoc(target.dataset.docId);
             const wrapper = document.createElement('div');
+            const middleware = getMiddleware();
 
             wrapSticker({
               doc,
@@ -1418,14 +1632,30 @@ export const MediaEditor = (props: MediaEditorProps) => {
               loop: true,
               play: true,
               withThumb: false,
-              loopEffect: true
+              loopEffect: true,
+              middleware: middleware.get()
             });
 
-            addStickerEntity(wrapper, target.dataset.docId);
+            if(IS_WEBM_SUPPORTED) {
+              addStickerEntity(wrapper, target.dataset.docId, doc.sticker);
+            } else {
+              if(doc.sticker === 3) {
+                // We treat video sticker as static in Safari
+                addStickerEntity(wrapper, target.dataset.docId, 1);
+              }
+
+              addStickerEntity(wrapper, target.dataset.docId, doc.sticker);
+            }
           }
         }
       );
       stickerTabRef.appendChild(stickers);
+
+      ProgressivePreloaderInstance = new ProgressivePreloader({
+        isUpload: true,
+        cancelable: false,
+        tryAgainOnFail: false
+      });
     };
 
     // props.mediaFile;
@@ -1604,6 +1834,15 @@ export const MediaEditor = (props: MediaEditorProps) => {
         <div id="previewRef" class={styles.MediaEditorPreview} ref={previewRef}>
           <div class={styles.MediaEditorInnerPreview}>
             <div
+              id="loaderRef"
+              ref={loaderRef}
+              classList={{
+                [styles.MediaEditorLoader]: true,
+                [styles.MediaEditorLoaderActive]: isLoading()
+              }}
+            />
+
+            <div
               id="previewContentRef"
               style={{display: activeTab() === 'crop' ? 'none' : 'initial'}}
               class={styles.MediaEditorPreviewContent}
@@ -1705,8 +1944,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
               <ButtonIconTsx
                 icon="smile"
                 noRipple={true}
-                class={classNames(styles.MediaEditorSidebarTabsListTab, activeTab() === 'smile' && styles.active)}
-                onClick={() => handleTabClick('smile')}
+                class={classNames(styles.MediaEditorSidebarTabsListTab, activeTab() === 'sticker' && styles.active)}
+                onClick={() => handleTabClick('sticker')}
               />
             </div>
 
@@ -2112,9 +2351,9 @@ export const MediaEditor = (props: MediaEditorProps) => {
                 </div>
               )}
 
-              {activeTab() === 'smile' && (
+              {activeTab() === 'sticker' && (
                 <div class={classNames(styles.MediaEditorSidebarTabsContentTabPanel, styles.Stickers)} ref={stickerTabRef}>
-                  <h1>STICKERS</h1>
+                  {/* <h1>STICKERS</h1> */}
                   {/* <button
                     style={{padding: '16px', background: 'blue'}}
                     onClick={renderVideo}
@@ -2146,6 +2385,14 @@ export const MediaEditor = (props: MediaEditorProps) => {
             icon='check'
             className='is-visible'
             onClick={() => {
+              // if(isLoading()) {
+              //   ProgressivePreloaderInstance.detach();
+              //   setIsLoading(false);
+              // } else {
+              //   ProgressivePreloaderInstance.attach(loaderRef, false);
+              //   setIsLoading(true);
+              // }
+
               renderMedia();
             }}
           />

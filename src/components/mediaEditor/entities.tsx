@@ -50,6 +50,7 @@ interface MediaEditorEntity {
 export interface StickerEntityType extends MediaEditorEntity {
   docId: DocId;
   container: HTMLElement;
+  stickerType: 1 | 2 | 3 // 1 - Static, 2 - Animated, 3 - Video sticker
 }
 
 interface TransformableEntityProps {
