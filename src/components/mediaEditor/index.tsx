@@ -387,15 +387,15 @@ export const MediaEditor = (props: MediaEditorProps) => {
     entities: [
       {
         'id': 0,
-        'x': 50,
-        'y': 50,
-        'fontSize': 48,
+        'x': 0,
+        'y': 0,
+        'fontSize': 24,
         'rotate': 0,
-        'textAlign': 'right',
+        'textAlign': 'left',
         'backgroundColor': '',
         'color': 'rgba(51,199,89)',
         'type': 'text',
-        'appearance': 'border',
+        'appearance': 'plain',
         'height': 'auto',
         'width': 'auto',
         'fontFamily': 'Comic Sans MS'
@@ -404,17 +404,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
         'id': 1,
         'x': 255,
         'y': 380,
-        'fontSize': 48,
+        'fontSize': 32,
         'fontFamily': 'Comic Sans MS',
         'rotate': 0,
-        // 'textAlign': 'left',
-        // 'textAlign': 'center',
         'textAlign': 'center',
         'backgroundColor': '',
         'color': 'rgba(255,214,10)',
-        // 'color': 'rgba(255,255,255)',
         'type': 'text',
-        // 'appearance': 'border',
         'appearance': 'background',
         'height': 'auto',
         'width': 'auto'
@@ -423,14 +419,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
         'id': 2,
         'x': 50,
         'y': 740,
-        'fontSize': 48,
+        'fontSize': 18,
         'rotate': 0,
         'textAlign': 'left',
         'backgroundColor': '',
-        // 'color': '#ff0000',
         'color': 'rgba(255,255,255)',
         'type': 'text',
-        'appearance': 'plain',
+        'appearance': 'border',
         'height': 'auto',
         'width': 'auto',
         'fontFamily': 'Times New Roman'
@@ -633,6 +628,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     // Render text nodes
     state.entities.forEach(entity => {
+      console.log('entity.x, entity.y: ', entity.x, entity.y);
+
       if(isTextEntity(entity)) {
         if(entity.appearance === 'background') {
           console.log('processing text entity', entity);
@@ -641,6 +638,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
           const textNodes = node.querySelectorAll('div');
 
           resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+          // resultCtx.textBaseline = 'hanging'; // Vertically align text in the middle
           resultCtx.textBaseline = 'middle'; // Vertically align text in the middle
 
           const paddingTop = 4;
@@ -662,9 +660,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
             }
             totalHeight += textHeight + paddingTop * 2 + microGap;
           });
-
-          console.log('maxWidth: ', maxWidth);
-          console.log('totalHeight: ', totalHeight);
 
           // Calculate the initial y position for the bounding box
           let startY = entity.y;
@@ -699,7 +694,14 @@ export const MediaEditor = (props: MediaEditorProps) => {
             } else {
               if(entity.textAlign === 'left') {
                 if(index === 0) {
-                  borderRadius = [radius, radius, 0, 0];
+                  const currentNode = textNodes[index];
+                  const nextNode = textNodes[index + 1];
+
+                  if(nextNode.clientWidth > currentNode.clientWidth) {
+                    borderRadius = [radius, radius, 0, 0]
+                  } else {
+                    borderRadius = [radius, radius, radius, 0]
+                  }
                 } else if(index === textNodes.length - 1) {
                   borderRadius = [0, radius, radius, radius];
                 } else {
@@ -711,7 +713,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
                 }
               } else if(entity.textAlign === 'right') {
                 if(index === 0) {
-                  borderRadius = [radius, radius, 0, 0];
+                  const currentNode = textNodes[index];
+                  const nextNode = textNodes[index + 1];
+                  if(nextNode.clientWidth > currentNode.clientWidth) {
+                    borderRadius = [radius, radius, 0, 0]
+                  } else {
+                    borderRadius = [radius, radius, 0, radius]
+                  }
                 } else if(index === textNodes.length - 1) {
                   borderRadius = [radius, 0, radius, radius];
                 } else {
@@ -723,7 +731,18 @@ export const MediaEditor = (props: MediaEditorProps) => {
                 }
               } else if(entity.textAlign === 'center') {
                 if(index === 0) {
-                  borderRadius = [radius, radius, 0, 0];
+                  const currentNode = textNodes[index];
+                  if(textNodes.length === 1) {
+                    borderRadius = [radius, radius, radius, radius];
+                  } else {
+                    const nextNode = textNodes[index + 1];
+
+                    if(nextNode.clientWidth > currentNode.clientWidth) {
+                      borderRadius = [radius, radius, 0, 0]
+                    } else {
+                      borderRadius = [radius, radius, radius, radius]
+                    }
+                  }
                 } else if(index === textNodes.length - 1) {
                   borderRadius = [radius, radius, radius, radius];
                 } else {
@@ -749,14 +768,14 @@ export const MediaEditor = (props: MediaEditorProps) => {
             // Increment y position for next line of text, subtracting the micro gap
             startY += textHeight + paddingTop * 2 - microGap;
           });
-        } else if(entity.appearance === 'border') {
+        } else if(entity.appearance === 'plain') {
           console.log('processing plain text entity', entity);
 
           const node = document.querySelector(`[data-ref="${entity.id}"]`);
           const textNodes = node.querySelectorAll('div');
 
           resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
-          resultCtx.textBaseline = 'middle'; // Vertically align text in the middle
+          resultCtx.textBaseline = 'hanging';
           resultCtx.fillStyle = entity.color; // Set the text color from entity.color
 
           // Calculate the overall bounding box
@@ -773,9 +792,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
             }
             totalHeight += textHeight;
           });
-
-          console.log('maxWidth: ', maxWidth);
-          console.log('totalHeight: ', totalHeight);
 
           // Calculate the initial y position for the bounding box
           let startY = entity.y;
@@ -818,14 +834,14 @@ export const MediaEditor = (props: MediaEditorProps) => {
             // Increment y position for next line of text
             startY += textHeight;
           });
-        } else if(entity.appearance === 'plain') {
+        } else if(entity.appearance === 'border') {
           console.log('processing plain text entity', entity);
 
           const node = document.querySelector(`[data-ref="${entity.id}"]`);
           const textNodes = node.querySelectorAll('div');
 
           resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
-          resultCtx.textBaseline = 'middle'; // Vertically align text in the middle
+          resultCtx.textBaseline = 'hanging';
           resultCtx.fillStyle = entity.color; // Set the text color to white
 
           // Calculate the overall bounding box
@@ -897,7 +913,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
       console.error('Failed to get context from imageLayerCanvas');
     }
   };
-
 
   const renderMediaForCrop = (angle: number) => {
     return new Promise(async(resolve, reject) => {
@@ -1282,10 +1297,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     setTimeout(() => {
       renderMedia();
-      document.querySelector('[data-ref="0"]')?.remove();
-      document.querySelector('[data-ref="1"]')?.remove();
-      document.querySelector('[data-ref="2"]')?.remove();
-      document.querySelector('[data-ref="3"]')?.remove();
+      // document.querySelector('[data-ref="0"]')?.remove();
+      // document.querySelector('[data-ref="1"]')?.remove();
+      // document.querySelector('[data-ref="2"]')?.remove();
+      // document.querySelector('[data-ref="3"]')?.remove();
     }, 250);
 
     window.addEventListener('resize', handleWindowResize);

@@ -139,6 +139,8 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
 
   return (
     <div
+      data-x={props.x}
+      data-y={props.y}
       ref={transformarableEntityRef}
       class={`${styles.TransformableEntity} ${props.isSelected ? styles.TransformableEntitySelected : ''}`}
       style={
@@ -236,10 +238,106 @@ const mapTextAlignToAlignItems = (textAlign: TextEntityType['textAlign']) => {
 }
 
 export const TextEntity = (props: TextEntityType) => {
+  let textEntityRef: HTMLDivElement;
+
+  const assignBorderRadiusToChildren = (ref: HTMLDivElement, textAlign: 'left' | 'center' | 'right') => {
+    if(ref.childNodes.length <= 1) {
+      return;
+    }
+
+    const childNodes = Array.from(ref.children) as HTMLDivElement[];
+    const radius = 10; // Define the border radius value here
+
+    childNodes.forEach((textNode, index) => {
+      let borderRadius: [number, number, number, number] = [0, 0, 0, 0];
+
+      const prevNode = childNodes[index - 1];
+      const nextNode = childNodes[index + 1];
+
+      const prevWidth = prevNode ? prevNode.clientWidth : 0;
+      const nextWidth = nextNode ? nextNode.clientWidth : 0;
+      const currentWidth = textNode.clientWidth;
+
+      if(index === 0) {
+        if(textAlign === 'left') {
+          borderRadius = [radius, radius, 0, 0];
+          if(nextWidth <= currentWidth) {
+            borderRadius = [radius, radius, radius, 0];
+          }
+        } else if(textAlign === 'center') {
+          borderRadius = [radius, radius, 0, 0];
+          if(nextWidth <= currentWidth) {
+            borderRadius = [radius, radius, radius, radius];
+          }
+        } else if(textAlign === 'right') {
+          borderRadius = [radius, radius, 0, 0];
+        }
+      } else if(index === childNodes.length - 1) {
+        if(textAlign === 'left') {
+          if(prevWidth <= currentWidth) {
+            borderRadius = [0, radius, radius, radius];
+          } else {
+            borderRadius = [0, 0, radius, radius];
+          }
+        } else if(textAlign === 'center') {
+          if(prevWidth < currentWidth) {
+            borderRadius = [radius, radius, radius, radius];
+          } else {
+            borderRadius = [0, 0, radius, radius];
+          }
+        } else if(textAlign === 'right') {
+          if(prevWidth <= currentWidth) {
+            borderRadius = [radius, 0, radius, radius];
+          } else {
+            borderRadius = [0, 0, radius, radius];
+          }
+        }
+      } else {
+        if(textAlign === 'left') {
+          if(prevWidth < currentWidth) {
+            borderRadius = [0, radius, 0, 0]
+          }
+          if(nextWidth < currentWidth) {
+            borderRadius = [0, radius, radius, 0]
+          }
+        } else if(textAlign === 'center') {
+          if(prevWidth < currentWidth) {
+            borderRadius = [radius, radius, 0, 0]
+          }
+          if(nextWidth < currentWidth) {
+            borderRadius = [radius, radius, radius, radius]
+          }
+        } else if(textAlign === 'right') {
+          if(prevWidth < currentWidth) {
+            borderRadius = [radius, 0, 0, 0]
+          }
+          if(nextWidth < currentWidth) {
+            borderRadius = [radius, 0, 0, radius]
+          }
+        }
+      }
+
+      // Apply border radius to the current element
+      textNode.style.borderRadius = `${borderRadius[0]}px ${borderRadius[1]}px ${borderRadius[2]}px ${borderRadius[3]}px`;
+    });
+  };
+
+  const handleTextEntityContentUpdate = (event: InputEvent) => {
+    assignBorderRadiusToChildren(event.target as HTMLDivElement, props.textAlign);
+  };
+
+  onMount(() => {
+    if(props.appearance === 'background') {
+      assignBorderRadiusToChildren(textEntityRef, props.textAlign);
+    }
+  });
+
   return (
     <div
-      data-ref={props.id}
+      ref={textEntityRef}
       contentEditable
+      onInput={props.appearance === 'background' && handleTextEntityContentUpdate}
+      data-ref={props.id}
       spellcheck={false}
       style={{
         'font-family': props.fontFamily,
@@ -257,8 +355,7 @@ export const TextEntity = (props: TextEntityType) => {
         [styles.TextEntityAppearanceBackgroundWhite]: props.appearance === 'background' && isCloseToWhite(props.color)
       }}
     >
-      <div>New text</div>
-      <div>And some long line</div>
+      <div>And</div>
       <div>small</div>
       <div>very small</div>
       <div>text</div>
@@ -266,7 +363,6 @@ export const TextEntity = (props: TextEntityType) => {
     </div>
   );
 };
-
 
 export const StickerEntity = (props: StickerEntityType) => {
   return (
