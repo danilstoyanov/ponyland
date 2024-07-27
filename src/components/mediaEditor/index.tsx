@@ -39,7 +39,7 @@ import {
   applyGrain,
   applySharp
 } from './filters';
-import {isCloseToWhite, isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
+import {isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, BlurTool, EraserTool} from './drawing';
 import StickersTab from './sticker-tab';
@@ -54,6 +54,10 @@ import type {CropAspectRatio} from './crop';
 import wrapSticker from '../wrappers/sticker';
 import ProgressivePreloader from '../preloader';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
+import {RenderManager} from './render';
+import {isCloseToWhite} from '../../helpers/color';
+
+// isCloseToWhite,
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -603,6 +607,33 @@ export const MediaEditor = (props: MediaEditorProps) => {
       reader.readAsDataURL(blob);
     });
   };
+
+  const renderMediaNew = async() => {
+    console.log('imageLayerCanvas: ', imageLayerCanvas);
+    console.log('drawingLayerCanvas: ', drawingLayerCanvas);
+
+    debugger;
+
+    const renderer = new RenderManager({
+      entities: state.entities,
+      imageLayerCanvas,
+      drawingLayerCanvas
+    });
+
+    try {
+      const file = await renderer.render();
+
+      const link = document.createElement('a');
+      link.download = file.name;
+      link.href = URL.createObjectURL(file);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch(error) {
+      console.error('Failed to render or download media:', error);
+    }
+  }
 
   // * Canvas Renderer
   const renderMedia = async() => {
@@ -2275,8 +2306,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       </div>
 
                       <RowTsx title='Add text' clickable={addTextEntity} />
-                      <RowTsx title='Remove text' clickable={() => true} />
-                      <RowTsx title='Render result' clickable={() => true} />
                     </div>
 
                     <div>
@@ -2372,15 +2401,14 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
               {activeTab() === 'sticker' && (
                 <div class={classNames(styles.MediaEditorSidebarTabsContentTabPanel, styles.Stickers)} ref={stickerTabRef}>
-                  {/* <h1>STICKERS</h1> */}
-                  {/* <button
+                  <button
                     style={{padding: '16px', background: 'blue'}}
-                    onClick={renderVideo}
+                    onClick={renderMediaNew}
                   >
                     Render!
                   </button>
 
-                  <button
+                  {/* <button
                     style={{'margin-left': '8px', 'padding': '16px', 'background': 'green'}}
                     onClick={renderMediaForTest}
                   >

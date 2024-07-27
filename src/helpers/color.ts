@@ -299,3 +299,31 @@ export function calculateOpacity(luminance: number, targetContrast: number) {
 
   return opacity;
 }
+
+export function isCloseToWhite(color: string): boolean {
+  let rgb: ColorRgb;
+
+  if(color.startsWith('#')) {
+    rgb = hexToRgb(color);
+  } else if(color.startsWith('rgb')) {
+    const parsedRgb = parseRgbString(color);
+    if(!parsedRgb) throw new Error('Invalid RGB format');
+    rgb = [parsedRgb.r, parsedRgb.g, parsedRgb.b];
+  } else {
+    throw new Error('Invalid color format');
+  }
+
+  const luminance = calculateLuminance(rgb);
+  const threshold = 0.9;
+
+  return luminance > threshold;
+}
+
+export function parseRgbString(rgbString: string): { r: number, g: number, b: number } | null {
+  const result = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*[\d.]+\s*)?\)/.exec(rgbString);
+  return result ? {
+    r: parseFloat(result[1]),
+    g: parseFloat(result[2]),
+    b: parseFloat(result[3])
+  } : null;
+}

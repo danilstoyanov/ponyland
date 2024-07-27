@@ -1,7 +1,7 @@
-import {createEffect, createSignal, JSX, JSXElement, on, onCleanup, onMount} from 'solid-js';
+import {createEffect, JSX, onCleanup, onMount} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import styles from './mediaEditor.module.scss';
-import {hexToRgb} from '../../helpers/color';
+import {hexToRgb, isCloseToWhite} from '../../helpers/color';
 
 type MediaEditorEntityType = 'text' | 'sticker';
 
@@ -175,37 +175,6 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
   );
 };
 
-export function isCloseToWhite(color: string) {
-  function parseRgbString(rgbString: string) {
-    const result = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)/.exec(rgbString);
-    return result ? {
-      r: parseFloat(result[1]),
-      g: parseFloat(result[2]),
-      b: parseFloat(result[3]),
-      a: result[4] !== undefined ? parseFloat(result[4]) : 1
-    } : null;
-  }
-
-  // Calculate the distance to white (255, 255, 255)
-  function distanceToWhite(r: number, g: number, b: number) {
-    return Math.sqrt((255 - r) ** 2 + (255 - g) ** 2 + (255 - b) ** 2);
-  }
-
-  let rgb;
-  if(color.startsWith('#')) {
-    rgb = hexToRgb(color);
-  } else if(color.startsWith('rgb')) {
-    const parsedRgb = parseRgbString(color);
-    if(!parsedRgb) throw new Error('Invalid RGB format');
-    rgb = [parsedRgb.r, parsedRgb.g, parsedRgb.b];
-  }
-
-  const distance = distanceToWhite(rgb[0], rgb[1], rgb[2]);
-  const threshold = 50;
-
-  return distance <= threshold;
-}
-
 const mapTextAlignToAlignItems = (textAlign: TextEntityType['textAlign']) => {
   if(textAlign === 'left') return 'start';
   if(textAlign === 'center') return 'center';
@@ -216,7 +185,7 @@ export const TextEntity = (props: TextEntityType) => {
   let textEntityRef: HTMLDivElement;
 
   const assignBorderRadiusToChildren = (ref: HTMLDivElement, textAlign: 'left' | 'center' | 'right') => {
-    if(ref.childNodes.length <= 1) {
+    if(ref.childNodes.length < 1) {
       return;
     }
 
@@ -224,6 +193,11 @@ export const TextEntity = (props: TextEntityType) => {
     const radius = 10; // Define the border radius value here
 
     childNodes.forEach((textNode, index) => {
+      if(childNodes.length === 1) {
+        textNode.style.borderRadius = `${radius}px ${radius}px ${radius}px ${radius}px`;
+        return;
+      };
+
       let borderRadius: [number, number, number, number] = [0, 0, 0, 0];
 
       const prevNode = childNodes[index - 1];
