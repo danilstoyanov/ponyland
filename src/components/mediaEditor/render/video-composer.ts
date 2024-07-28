@@ -16,14 +16,13 @@ export class VideoComposer {
 
       try {
         mediaRecorder = new MediaRecorder(stream, options);
-      } catch(e0) {
-        console.error('Exception while creating MediaRecorder:', e0);
-        reject(e0);
+      } catch(err) {
+        console.error('recorder error:', err);
+        reject(err);
         return;
       }
 
       mediaRecorder.onstop = (event) => {
-        console.log('Recorder stopped:', event);
         const superBuffer = new Blob(recordedBlobs, {type: 'video/mp4'});
         resolve(superBuffer);
       };
@@ -38,18 +37,16 @@ export class VideoComposer {
 
       let resultFrame: ImageBitmap;
       let frameIndex = 0;
+      const frameDuration = 1000 / fps;
+      let lastFrameTime = performance.now();
 
       const captureResultCanvasFrame = async() => {
-        return new Promise<ImageBitmap>((resolve) => {
-          resultCanvas.toBlob((blob) => {
-            createImageBitmap(blob).then((bitmap) => {
-              resolve(bitmap);
-            });
-          });
-        });
+        const blob = await new Promise<Blob>((resolve) => resultCanvas.toBlob(resolve));
+        const bitmap = await createImageBitmap(blob);
+        return bitmap;
       };
 
-      const drawNextFrame = async() => {
+      const drawNextFrame = async(timestamp: number) => {
         if(!resultFrame) {
           resultFrame = await captureResultCanvasFrame();
           context.drawImage(resultFrame, 0, 0);
@@ -60,20 +57,25 @@ export class VideoComposer {
           return;
         }
 
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(resultFrame, 0, 0);
+        const elapsedTime = timestamp - lastFrameTime;
+        if(elapsedTime >= frameDuration) {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(resultFrame, 0, 0);
 
-        frames.forEach((frameSet, index) => {
-          const frame = frameSet[frameIndex];
-          const sticker = stickers[index];
-          context.drawImage(frame, sticker.x, sticker.y);
-        });
+          frames.forEach((frameSet, index) => {
+            const frame = frameSet[frameIndex];
+            const sticker = stickers[index];
+            context.drawImage(frame, sticker.x, sticker.y);
+          });
 
-        frameIndex++;
-        setTimeout(drawNextFrame, 1000 / fps);
+          frameIndex++;
+          lastFrameTime = timestamp;
+        }
+
+        requestAnimationFrame(drawNextFrame);
       };
 
-      drawNextFrame();
+      requestAnimationFrame(drawNextFrame);
     });
   }
 }

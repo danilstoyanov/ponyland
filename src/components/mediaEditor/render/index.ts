@@ -8,14 +8,18 @@ import {AnimatedStickerRenderer} from './animated-sticker';
 import {VideoStickerRenderer} from './video-sticker';
 import {TextRenderer} from './text';
 import {VideoComposer} from './video-composer';
+import ProgressivePreloader from '../../preloader';
 
 interface RenderManagerParams {
   entities: Array<TextEntityType | StickerEntityType>;
   imageLayerCanvas: HTMLCanvasElement;
   drawingLayerCanvas: HTMLCanvasElement;
+  preloader: ProgressivePreloader;
 };
 
 export class RenderManager {
+  private preloader: ProgressivePreloader
+
   private textRenderer: TextRenderer;
   private staticStickerRenderer: StaticStickerRenderer;
   private animatedStickerRenderer: AnimatedStickerRenderer;
@@ -37,12 +41,19 @@ export class RenderManager {
   constructor({
     entities,
     imageLayerCanvas,
-    drawingLayerCanvas
+    drawingLayerCanvas,
+    preloader
   }: RenderManagerParams) {
     this.imageLayerCanvas = imageLayerCanvas;
     this.drawingLayerCanvas = drawingLayerCanvas;
     this.imageLayerCanvasCtx = this.imageLayerCanvas.getContext('2d');
     this.drawingLayerCanvasCtx = this.drawingLayerCanvas.getContext('2d');
+
+    /**
+     * It's just few hours before deadline, so we will show this progress in a super approximate way
+     * cause ideally we should build render pipeline and assign different progress values based on entities count and stuff... 🙈
+    */
+    this.preloader = preloader;
 
     this.textRenderer = new TextRenderer({imageLayerCanvas, drawingLayerCanvas});
     this.staticStickerRenderer = new StaticStickerRenderer({imageLayerCanvas, drawingLayerCanvas});
@@ -58,9 +69,13 @@ export class RenderManager {
 
   onRenderProgress() {};
 
-  onRenderStart() {};
+  onRenderStart() {
+    this.preloader.setProgress(5);
+  };
 
-  onRenderEnd() {};
+  onRenderEnd() {
+    this.preloader.setProgress(100);
+  };
 
   /*
    This is main method for rendering, it will execute rendering in the following way, the order maybe adjusted later
@@ -73,21 +88,28 @@ export class RenderManager {
     5 Render of animated + video stickers happens at the end
   */
   async render() {
+    this.onRenderStart();
+
     // 1 Render base layer with cropped image with filters applied
     this.resultCanvasCtx.drawImage(this.imageLayerCanvas, 0, 0);
+    this.preloader.setProgress(20);
 
     // 2 Render of drawings on top of the image layer
     this.resultCanvasCtx.drawImage(this.drawingLayerCanvas, 0, 0);
+    this.preloader.setProgress(30);
 
     // 3 Render of text entities on top of image + drawings
 
     this.textEntities.forEach(entity => this.textRenderer.render(entity, this.resultCanvasCtx));
+    this.preloader.setProgress(40);
 
     // 4 Render of static stickers entities on top of image + drawings
     const staticStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 1);
 
     if(staticStickers.length > 0) {
-      await Promise.all(staticStickers.map(sticker => this.staticStickerRenderer.render(sticker, this.resultCanvasCtx)));
+      await Promise.all(staticStickers.map(sticker => {
+        this.staticStickerRenderer.render(sticker, this.resultCanvasCtx);
+      }));
     };
 
     // 5 Render of animated stickers
@@ -95,6 +117,8 @@ export class RenderManager {
     const videoStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 3);
 
     if(animatedStickers.length === 0 && videoStickers.length === 0) {
+      this.onRenderEnd();
+
       const media = await this._exportImage();
 
       const url = window.URL.createObjectURL(media);
@@ -110,14 +134,20 @@ export class RenderManager {
         window.URL.revokeObjectURL(url);
       }, 100);
 
+      this.onRenderEnd();
+
       return media;
     } else {
-      const animatedStickersFrames = await this.animatedStickerRenderer.render(animatedStickers, 3000, 48);
-      const videoStickersFrames = await this.videoStickerRenderer.render(videoStickers, 3000, 48);
+      this.preloader.setProgress(60);
+      const animatedStickersFrames = await this.animatedStickerRenderer.render(animatedStickers, 3000, 60);
+      this.preloader.setProgress(70);
+      const videoStickersFrames = await this.videoStickerRenderer.render(videoStickers, 3000, 60);
 
       const frames = [...animatedStickersFrames, ...videoStickersFrames];
 
-      const videoBlob = await this.videoComposer.createVideoFromFrames(this.resultCanvas, [...animatedStickers, ...videoStickers], frames, 48);
+      const videoBlob = await this.videoComposer.createVideoFromFrames(this.resultCanvas, [...animatedStickers, ...videoStickers], frames, 60);
+
+      this.onRenderEnd();
 
       return this._exportVideo(videoBlob);
 
