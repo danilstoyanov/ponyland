@@ -474,7 +474,7 @@
     position: absolute;
     width: 24px;
     height: 24px;
-    background-color: red;
+    // background-color: red;
   }
 
   &CornerHandle.TopLeft {
@@ -730,24 +730,22 @@
   }
 };
 
-.MediaEditorCrop {
-  div[data-resize-action=top-left]:hover {
-    cursor: nwse-resize;
-    // background-color: green;
-  }
-  div[data-resize-action=top-right]:hover {
-    cursor: nesw-resize;
-    // background-color: green;
-  }
-  div[data-resize-action=bottom-left]:hover {
-    cursor: nesw-resize;
-    // background-color: green;
-  }
-  div[data-resize-action=bottom-right]:hover {
-    cursor: nwse-resize;
-    // background-color: green;
-  }
+div[data-resize-action=top-left]:hover {
+  cursor: nwse-resize;
 }
+
+div[data-resize-action=top-right]:hover {
+  cursor: nesw-resize;
+}
+
+div[data-resize-action=bottom-left]:hover {
+  cursor: nesw-resize;
+}
+
+div[data-resize-action=bottom-right]:hover {
+  cursor: nwse-resize;
+}
+
 
 :global(.crop-component) {
   background-color: transparent;
