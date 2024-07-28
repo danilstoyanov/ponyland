@@ -196,15 +196,33 @@
   }
 
   .popup-item-media-menu {
-    --secondary-text-color: #fff;
-    bottom: 0;
+    --height: 32px;
+    --bottom-offset: 6px;
+    bottom: calc(((var(--height) + var(--bottom-offset)) * -1));
     position: absolute;
     display: flex;
-    padding: 6px 10px;
     backdrop-filter: blur(16px);
     border-radius: 16px;
+    padding: 6px 10px;
     background: rgba(0, 0, 0, 0.2);
-    transition: transform var(--transition-standard-in);
+    transition: var(--transition-standard-in);
+    z-index: 2;
+    gap: 16px;
+    height: var(--height);
+
+    .btn-media-menu {
+      font-size: var(--font-size-20);
+      color: rgba(255, 255, 255, 0.7);
+      padding: 0;
+
+      &:hover {
+        color: rgba(255, 255, 255, 1);
+      }
+    }
+  }
+
+  .popup-item-media:hover .popup-item-media-menu {
+    bottom: var(--bottom-offset);
   }
 
   .popup-photo > .popup-item-media {

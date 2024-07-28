@@ -57,6 +57,7 @@ import SelectedEffect from '../chat/selectedEffect';
 
 import ButtonIcon from '../buttonIcon';
 import {createMediaEditor} from '../mediaEditor';
+import {replaceButtonIcon} from '../button';
 
 type SendFileParams = SendFileDetails & {
   file?: File,
@@ -156,8 +157,6 @@ export default class PopupNewMedia extends PopupElement {
     const canSendPhotos = canSend.send_photos;
     const canSendVideos = canSend.send_videos;
     const canSendDocs = canSend.send_docs;
-
-    console.log('this.btnConfirm: ', this.btnConfirm);
 
     attachClickEvent(this.btnConfirm, async() => (await pause(0), this.send()), {listenerSetter: this.listenerSetter});
 
@@ -581,6 +580,12 @@ export default class PopupNewMedia extends PopupElement {
     }
   }
 
+  public removeFile(file: File) {
+    this.files = this.files.filter(item => item.name !== file.name && item.lastModified !== file.lastModified);
+    this.mediaContainer.replaceChildren();
+    this.attachFiles();
+  }
+
   private onKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     const {input} = this.messageInputField;
@@ -676,8 +681,6 @@ export default class PopupNewMedia extends PopupElement {
 
     const {length} = sendFileDetails;
     const sendingParams = this.chat.getMessageSendingParams();
-
-    debugger;
 
     let effect = this.effect();
     this.iterate((sendFileParams) => {
@@ -807,13 +810,12 @@ export default class PopupNewMedia extends PopupElement {
       const img = new Image();
       itemDiv.append(img);
 
-      /* Создать меню из 3 айтемов */
       const imageMenuDiv = document.createElement('div');
       imageMenuDiv.classList.add('popup-item-media-menu');
 
-      const enhanceBtn = ButtonIcon('enhance_media', {noRipple: true});
-      const spoilerBtn = ButtonIcon('mediaspoiler', {noRipple: true});
-      const binBtn = ButtonIcon('delete_filled', {noRipple: true});
+      const enhanceBtn = ButtonIcon('enhance_media btn-media-menu', {noRipple: true});
+      const spoilerBtn = ButtonIcon('mediaspoiler btn-media-menu', {noRipple: true});
+      const binBtn = ButtonIcon('delete_filled btn-media-menu', {noRipple: true});
 
       imageMenuDiv.append(enhanceBtn, spoilerBtn, binBtn);
       itemDiv.append(imageMenuDiv);
@@ -833,28 +835,29 @@ export default class PopupNewMedia extends PopupElement {
       params.height = img.naturalHeight;
 
       enhanceBtn.addEventListener('click', () => {
-        console.log('SCALED: ', scaled);
-        console.log('img: ', img);
-        console.log('url: ', url);
-
-        console.log('this.willAttach: ', this.willAttach);
-
         createMediaEditor({
-          onMediaSave: (file) => {
-            console.log('params: ', params);
-
-            // {
-            //   "file": {},
-            //   "objectURL": "blob:http://localhost:8080/d5e70394-bb95-4555-8e73-2592d426be80",
-            //   "width": 1585,
-            //   "height": 2113
-            // }
-
-            // работает, но нужно еще позаботиться об удалении старого файла и обновлении лайаута попапа
-            this.attachFile(file);
+          onMediaSave: (editedFile) => {
+            this.removeFile(file);
+            this.addFiles([editedFile]);
           },
           mediaFile: file
         });
+      });
+
+      spoilerBtn.addEventListener('click', () => {
+        const currentItem = this.partition().media.find(media => media.file.name === file.name && media.file.lastModified === file.lastModified);
+
+        if(!currentItem.mediaSpoiler) {
+          this.applyMediaSpoiler(currentItem);
+          replaceButtonIcon(spoilerBtn, 'mediaspoileroff');
+        } else {
+          this.removeMediaSpoiler(currentItem);
+          replaceButtonIcon(spoilerBtn, 'mediaspoiler');
+        }
+      });
+
+      binBtn.addEventListener('click', () => {
+        this.removeFile(file);
       });
 
       if(file.type === 'image/gif') {
