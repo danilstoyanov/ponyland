@@ -14,7 +14,7 @@ type ButtonCornerTsxProps = {
 export const ButtonCornerTsx = (props: ButtonCornerTsxProps) => {
   const [local, otherProps] = splitProps(props, ['className', 'icon', 'noRipple', 'onlyMobile', 'asDiv', 'onClick']);
 
-  const button = Button('btn-circle btn-corner z-depth-1' + (local.className ? ' ' + local.className : ''), {
+  const button = Button('btn-circle btn-corner z-depth-3' + (local.className ? ' ' + local.className : ''), {
     'icon': local.icon,
     'asDiv': local.asDiv
   });

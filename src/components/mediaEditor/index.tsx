@@ -435,7 +435,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
   };
 
   const [isLoading, setIsLoading] = createSignal<boolean>(false);
-  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('brush');
+  const [activeTab, setActiveTab] = createSignal<MediaEditorTab>('enhance');
   const [originalImage, setOriginalImage] = createSignal<HTMLImageElement>();
   const [workareaDimensions, setWorkareaDimensions] = createSignal<MediaEditorWorkareaDimensions>();
   const [cropPreview, setCropPreview] = createSignal<HTMLImageElement>();
@@ -940,8 +940,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
       appDownloadManager.construct(rootScope.managers);
 
-      setupStickers();
-
       workareaImage = await createImageBitmap(image);
       setOriginalImage(image);
     };
@@ -967,9 +965,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
         URL.revokeObjectURL(objectUrl);
       };
     } else if(props.mediaFile === null) {
-      // Handle the case when mediaFile is null
-
-      // const png = img_3840x2160_8_4; // Placeholder for the actual image source
       const png = main_canvas_png; // Placeholder for the actual image source
 
       const image = new Image();
@@ -993,10 +988,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
       cancelable: false,
       tryAgainOnFail: false
     });
+
     ProgressivePreloaderInstance.attach(loaderRef, false);
 
-    // DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
-    // DrawingManagerInstance.deactivate();
+    setupStickers();
+
     // setupStickers();
     // DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
 
@@ -1025,6 +1021,12 @@ export const MediaEditor = (props: MediaEditorProps) => {
     if(activeTab() === 'sticker' && !stickerTabRef.childNodes.length) {
       const stickers = EmoticonsDropdown.getElement();
       stickerTabRef.appendChild(stickers);
+
+      const activeButton  = stickers.querySelector('.btn-icon.menu-horizontal-div-item.active');
+
+      if(activeButton) {
+        (activeButton as HTMLButtonElement).click();
+      }
     }
   }));
 

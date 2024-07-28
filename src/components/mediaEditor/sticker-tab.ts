@@ -164,7 +164,6 @@ export default class StickersTab extends StickerTabBase<StickersTabCategory<Stic
       icon: 'savedmessages',
       styles: EmoticonsTabStyles.Stickers
     });
-    // favedCategory.elements.menuTab.classList.add('active');
 
     const recentCategory = this.createLocalCategory({
       id: 'recent',

@@ -106,8 +106,6 @@ export class RenderManager {
         window.URL.revokeObjectURL(url);
       }, 100);
 
-      // console.log('debugging render');
-
       return media;
     } else {
       const animatedStickersFrames = await this.animatedStickerRenderer.render(animatedStickers, 3000, 48);

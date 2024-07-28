@@ -315,8 +315,6 @@ export class EmoticonsDropdown {
         return;
       }
 
-      // console.log('sticky scrollTop', stuck, target, scrollable.container.scrollTop, jumpedTo);
-
       if(Math.abs(jumpedTo - scrollable.scrollPosition) <= 1) {
         return;
       } else {
@@ -408,10 +406,6 @@ export class EmoticonsDropdown {
 
     const docId = target.dataset.docId;
     if(!docId) return false;
-
-    const selectedDocument = await this.managers.appDocsManager.getDoc(docId);
-
-    // console.log({document: docId, clearDraft, silent, target, ignoreNoPremium}, selectedDocument, target, 'event');
 
     this.handleStickerClick(target);
   };
