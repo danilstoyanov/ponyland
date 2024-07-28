@@ -1,4 +1,3 @@
-// textRenderer.ts
 import {TextEntityType} from '../entities';
 import {Renderer, RendererParams} from './renderer';
 import {isCloseToWhite} from '../../../helpers/color';

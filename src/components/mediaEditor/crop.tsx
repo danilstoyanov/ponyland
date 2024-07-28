@@ -232,8 +232,6 @@ export const Crop = (props: CropPops) => {
     containerWrapperRef.style.left = left + 'px';
   }
 
-  // Events
-  // Save the initial event details and container state
   function saveEventState(e: any) {
     event_state.container_width = containerRef.offsetWidth;
     event_state.container_height = containerRef.offsetHeight;
@@ -339,13 +337,11 @@ export const Crop = (props: CropPops) => {
     let aspectWidth: number | undefined;
     let aspectHeight: number | undefined;
 
-    // Maintain the original aspect ratio of the image
     const originalWidth = props.image.naturalWidth;
     const originalHeight = props.image.naturalHeight;
 
     switch(aspectRatio) {
       case 'Free':
-        // Set the crop area to the image dimensions
         width = originalWidth;
         height = originalHeight;
         break;
@@ -369,7 +365,6 @@ export const Crop = (props: CropPops) => {
         break;
     }
 
-    // Ensure the crop area fits within the image bounds
     const maxWidth = overlayImageRef.offsetWidth;
     const maxHeight = overlayImageRef.offsetHeight;
 
@@ -388,8 +383,8 @@ export const Crop = (props: CropPops) => {
     }
 
     updateCropSize(width, height);
-    updateCropImage(0, 0); // Reset the crop image position to the top-left corner
-    updateContainer(0, 0); // Reset the container position to the top-left corner
+    updateCropImage(0, 0);
+    updateContainer(0, 0);
   };
 
   createEffect(on(() => props.state.aspectRatio, () => {
@@ -398,7 +393,6 @@ export const Crop = (props: CropPops) => {
     }
   }));
 
-  // MAIN FUNCTION FOR CROP AREA RESIZE
   const handleCropAreaResize = () => {
     const topRightNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-right]');
     const topLeftNode = document.querySelector<HTMLDivElement>('[data-resize-action=top-left]');
@@ -526,7 +520,6 @@ export const Crop = (props: CropPops) => {
     const width = cropImageRef.offsetWidth;
     const height = cropImageRef.offsetHeight;
 
-    // Stackoverflow
     const scalingFactor = Math.cos(absTheta) + Math.max(width / height, height / width) * Math.sin(absTheta);
 
     overlayImageRef.style.transform = `rotate(${value}deg) scale(${scalingFactor})`;

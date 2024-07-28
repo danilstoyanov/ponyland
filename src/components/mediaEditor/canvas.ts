@@ -1,3 +1,8 @@
+/*
+  Support of ImageBitmap seems to be okay now, so let's use it
+  https://caniuse.com/?search=imageBitmap
+*/
+
 export async function rotateImage(image: ImageBitmap, angle: number): Promise<ImageBitmap> {
   const radians = angle * Math.PI / 180;
   const cos = Math.abs(Math.cos(radians));
@@ -55,25 +60,20 @@ export async function tiltImage(imageBitmap: ImageBitmap, tiltAngle: number) {
   const radians = tiltAngle * Math.PI / 180;
   const absTheta = Math.abs(radians);
 
-  // Calculate the scaling factor to ensure the image remains within the canvas viewbox
   const scalingFactor = Math.cos(absTheta) + Math.max(width / height, height / width) * Math.sin(absTheta);
 
-  // Create a new canvas
   const tiltedCanvas = document.createElement('canvas');
   tiltedCanvas.width = width;
   tiltedCanvas.height = height;
 
   const tiltedCtx = tiltedCanvas.getContext('2d');
 
-  // Translate and rotate the context
   tiltedCtx.translate(width / 2, height / 2);
   tiltedCtx.rotate(radians);
   tiltedCtx.scale(scalingFactor, scalingFactor);
 
-  // Draw the image
   tiltedCtx.drawImage(imageBitmap, -width / 2, -height / 2);
 
-  // Create a new ImageBitmap from the tilted canvas
   const tiltedImageBitmap = await createImageBitmap(tiltedCanvas);
   tiltedCanvas.remove();
 

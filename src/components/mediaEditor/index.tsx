@@ -7,6 +7,7 @@ import RowTsx from '../rowTsx';
 import type {RangeSelectorProps} from '../rangeSelectorTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import ColorPickerTsx from '../colorPickerTsx';
+import I18n, {i18n, LangPackKey} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
 import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
@@ -14,16 +15,12 @@ import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
 import main_canvas_png from './main-canvas.png';
 import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-// import png from './with_footer.png';
 import img_crop_debugger from './CROP_DEBUGGER.png';
 import img_200x200_1_1 from './200x200_1_1.png';
 import img_320x200_8_5 from './320x200_8_5.png';
 import img_3840x2160_8_4 from './3840x2160_8_4.png';
 import img_3840x3840_1_1 from './3840x3840_1_1.png';
 import {rotateImage, flipImage, tiltImage, changeImageBitmapSize} from './canvas';
-
-// import png from './sonic.jpg';
-// import png from './small.png';
 import debounce from '../../helpers/schedulers/debounce';
 import {useAppState} from '../../stores/appState';
 import {
@@ -93,7 +90,7 @@ interface MediaEditorColorPickerProps {
 interface MediaEditorToolProps {
   svg: JSX.Element;
   color: string;
-  title: string;
+  title: string | HTMLElement;
   isSelected: boolean;
   onClick: () => void;
 }
@@ -121,7 +118,7 @@ export interface MediaEditorCropState {
 }
 
 type MediaEditorRangeSelectorProps = RangeSelectorProps & {
-  label: string;
+  label: string | HTMLElement;
   style?: Record<string, string>;
 }
 
@@ -609,30 +606,18 @@ export const MediaEditor = (props: MediaEditorProps) => {
   };
 
   const renderMediaNew = async() => {
-    console.log('imageLayerCanvas: ', imageLayerCanvas);
-    console.log('drawingLayerCanvas: ', drawingLayerCanvas);
-
-    debugger;
-
     const renderer = new RenderManager({
       entities: state.entities,
       imageLayerCanvas,
       drawingLayerCanvas
     });
 
-    try {
-      const file = await renderer.render();
+    setIsLoading(true);
+    const media = await renderer.render();
+    setIsLoading(false);
 
-      const link = document.createElement('a');
-      link.download = file.name;
-      link.href = URL.createObjectURL(file);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
-    } catch(error) {
-      console.error('Failed to render or download media:', error);
-    }
+    props.onMediaSave(media);
+    props.onClose();
   }
 
   // * Canvas Renderer
@@ -1703,12 +1688,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
       );
 
       // stickerTabRef.appendChild(stickers);
-
-      ProgressivePreloaderInstance = new ProgressivePreloader({
-        isUpload: true,
-        cancelable: false,
-        tryAgainOnFail: false
-      });
     };
 
     const setupImageProcessing = async(image: HTMLImageElement, dimensions: { width: number, height: number }) => {
@@ -1777,6 +1756,14 @@ export const MediaEditor = (props: MediaEditorProps) => {
     }
 
     DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, imageLayerCanvas, previewContentRef);
+
+    ProgressivePreloaderInstance = new ProgressivePreloader({
+      isUpload: true,
+      cancelable: false,
+      tryAgainOnFail: false
+    });
+    ProgressivePreloaderInstance.attach(loaderRef, false);
+
     // DrawingManagerInstance.activate(state.tools[state.selectedToolId].instance, state.tools[state.selectedToolId].color, state.tools[state.selectedToolId].size);
     // DrawingManagerInstance.deactivate();
 
@@ -1962,7 +1949,9 @@ export const MediaEditor = (props: MediaEditorProps) => {
               />
             </div>
 
-            <div class={styles.MediaEditorSidebarHeaderTitle}>Edit</div>
+            <div class={styles.MediaEditorSidebarHeaderTitle}>
+              {i18n('MediaEditor.Title')}
+            </div>
           </div>
 
           <div class={styles.MediaEditorSidebarTabs}>
@@ -2004,7 +1993,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
                   <div class={styles.MediaEditorSidebarTabsContentTabPanelFilter}>
                     <MediaEditorRangeSelector
-                      label="Enhance"
+                      label={i18n('MediaEditor.Filter.Enhance')}
                       min={0}
                       max={1}
                       step={0.01}
@@ -2012,7 +2001,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleEnhanceUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Brightness"
+                      label={i18n('MediaEditor.Filter.Brightness')}
                       min={-1}
                       max={1}
                       step={0.01}
@@ -2020,7 +2009,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleBrigthnessUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Contrast"
+                      label={i18n('MediaEditor.Filter.Contrast')}
                       min={-1}
                       max={1}
                       step={0.01}
@@ -2028,7 +2017,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleContrastUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Saturation"
+                      label={i18n('MediaEditor.Filter.Saturation')}
                       min={-1}
                       max={1}
                       step={0.01}
@@ -2036,7 +2025,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleSaturationUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Warmth"
+                      label={i18n('MediaEditor.Filter.Warmth')}
                       min={-1}
                       max={1}
                       step={0.01}
@@ -2044,7 +2033,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleWarmthUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Fade"
+                      label={i18n('MediaEditor.Filter.Fade')}
                       min={0}
                       max={1}
                       step={0.01}
@@ -2052,7 +2041,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleFadeUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Highlights"
+                      label={i18n('MediaEditor.Filter.Highlights')}
                       min={0}
                       max={1}
                       step={0.01}
@@ -2060,7 +2049,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleHighlightsUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Shadows"
+                      label={i18n('MediaEditor.Filter.Shadows')}
                       min={-1}
                       max={1}
                       step={0.01}
@@ -2068,7 +2057,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleShadowsUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Vignette"
+                      label={i18n('MediaEditor.Filter.Vignette')}
                       min={0}
                       max={1}
                       step={0.01}
@@ -2076,7 +2065,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleVignetteUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Sharpen"
+                      label={i18n('MediaEditor.Filter.Sharpen')}
                       min={0}
                       max={1}
                       step={0.01}
@@ -2084,7 +2073,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       onScrub={handleSharpUpdate}
                     />
                     <MediaEditorRangeSelector
-                      label="Grain"
+                      label={i18n('MediaEditor.Filter.Grain')}
                       min={0}
                       max={1}
                       step={0.01}
@@ -2098,28 +2087,26 @@ export const MediaEditor = (props: MediaEditorProps) => {
               {activeTab() === 'crop' && (
                 <div class={styles.MediaEditorSidebarTabsContentTabPanel}>
                   <div class={styles.MediaEditorSidebarSectionHeader}>
-                    Aspect ratio
+                    {i18n('MediaEditor.AspectRatio.Title')}
                   </div>
-
-                  {/* class={classNames(styles.MediaEditorSidebarTabsListTab, activeTab() === 'brush' && styles.active)} */}
 
                   <div class={styles.MediaEditorSidebarTabsContentTabPanelCrop}>
                     <RowTsx
-                      title='Free'
+                      title={i18n('MediaEditor.AspectRatio.Free')}
                       icon='aspect_ratio_free'
                       clickable={() => setState('crop', {aspectRatio: 'Free'})}
                       rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === 'Free' && styles.Active]}
                     />
 
                     <RowTsx
-                      title='Original'
+                      title={i18n('MediaEditor.AspectRatio.Original')}
                       icon='aspect_ratio_image_original'
                       clickable={() => setState('crop', {aspectRatio: 'Original'})}
                       rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === 'Original' && styles.Active]}
                     />
 
                     <RowTsx
-                      title='Square'
+                      title={i18n('MediaEditor.AspectRatio.Square')}
                       icon='aspect_ratio_square'
                       clickable={() => setState('crop', {aspectRatio: 'Square'})}
                       rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === 'Square' && styles.Active]}
@@ -2211,10 +2198,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
                     </div>
 
                     <RowTsx
-                      title='DO CROP'
-                      icon='bomb'
-                      iconClasses={['row-icon-rotated']}
-                      // clickable={() => setState('crop', {aspectRatio: '9:16'})}
+                      title={i18n('MediaEditor.Crop.Apply')}
+                      icon='check1'
                       rowClasses={[styles.MediaEditorRow, state.crop.aspectRatio === '9:16' && styles.Active]}
                       clickable={() => {
                         setActiveTab('enhance');
@@ -2288,7 +2273,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
                     <div class={styles.MediaEditorSidebarSectionHeader}>
                       <MediaEditorRangeSelector
-                        label="Size"
+                        label={i18n('MediaEditor.ControlLabel.Size')}
                         min={10}
                         max={64}
                         step={1}
@@ -2302,15 +2287,15 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
                     <div>
                       <div class={styles.MediaEditorSidebarSectionHeader}>
-                        Controls
+                        {i18n('MediaEditor.ControlLabel.Controls')}
                       </div>
 
-                      <RowTsx title='Add text' clickable={addTextEntity} />
+                      <RowTsx title={i18n('MediaEditor.ControlLabel.AddText')} clickable={addTextEntity} />
                     </div>
 
                     <div>
                       <div class={styles.MediaEditorSidebarSectionHeader}>
-                        Font
+                        {i18n('MediaEditor.ControlLabel.Font')}
                       </div>
                       <RowTsx title='Roboto' clickable={() => setTextEntityFont('Roboto')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowRoboto]} />
                       <RowTsx title='Courier New' clickable={() => setTextEntityFont('Courier New')} rowClasses={[styles.MediaEditorFontRow, styles.MediaEditorFontRowCourierNew]} />
@@ -2331,7 +2316,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                     </div>
 
                     <MediaEditorRangeSelector
-                      label="Size"
+                      label={i18n('MediaEditor.ControlLabel.Size')}
                       min={10}
                       max={48}
                       step={1}
@@ -2348,7 +2333,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       </div>
 
                       <MediaEditorTool
-                        title="Pen"
+                        title={i18n('MediaEditor.Tool.Pen')}
                         color={state.tools[0].color}
                         svg={<PenSvg />}
                         isSelected={state.selectedToolId === 0}
@@ -2356,7 +2341,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       />
 
                       <MediaEditorTool
-                        title="Arrow"
+                        title={i18n('MediaEditor.Tool.Arrow')}
                         color={state.tools[1].color}
                         svg={<ArrowSvg />}
                         isSelected={state.selectedToolId === 1}
@@ -2364,7 +2349,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       />
 
                       <MediaEditorTool
-                        title="Brush"
+                        title={i18n('MediaEditor.Tool.Brush')}
                         color={state.tools[2].color}
                         svg={<BrushSvg />}
                         isSelected={state.selectedToolId === 2}
@@ -2372,7 +2357,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       />
 
                       <MediaEditorTool
-                        title="Neon"
+                        title={i18n('MediaEditor.Tool.Neon')}
                         color={state.tools[3].color}
                         svg={<NeonBrushSvg />}
                         isSelected={state.selectedToolId === 3}
@@ -2380,7 +2365,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       />
 
                       <MediaEditorTool
-                        title="Blur"
+                        title={i18n('MediaEditor.Tool.Blur')}
                         color={state.tools[4].color}
                         svg={<BlurSvg />}
                         isSelected={state.selectedToolId === 4}
@@ -2388,7 +2373,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       />
 
                       <MediaEditorTool
-                        title="Eraser"
+                        title={i18n('MediaEditor.Tool.Eraser')}
                         color={state.tools[5].color}
                         svg={<EraserSvg />}
                         isSelected={state.selectedToolId === 5}
@@ -2407,40 +2392,16 @@ export const MediaEditor = (props: MediaEditorProps) => {
                   >
                     Render!
                   </button>
-
-                  {/* <button
-                    style={{'margin-left': '8px', 'padding': '16px', 'background': 'green'}}
-                    onClick={renderMediaForTest}
-                  >
-                    File Update Debug
-                  </button>
-
-                  <button
-                    style={{'margin-left': '8px', 'padding': '16px', 'background': 'red'}}
-                    onClick={renderMedia}
-                  >
-                    Render Media
-                  </button> */}
                 </div>
               )}
             </div>
           </div>
 
-          {/* btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon */}
-
           <ButtonCornerTsx
             icon='check'
             className='is-visible'
             onClick={() => {
-              // if(isLoading()) {
-              //   ProgressivePreloaderInstance.detach();
-              //   setIsLoading(false);
-              // } else {
-              //   ProgressivePreloaderInstance.attach(loaderRef, false);
-              //   setIsLoading(true);
-              // }
-
-              renderMedia();
+              renderMediaNew();
             }}
           />
         </div>

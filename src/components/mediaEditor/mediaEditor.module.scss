@@ -72,10 +72,11 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
     height: 100%;
-    z-index: 10;
-    background-color: red;
+    z-index: 6;
+    width: calc(100vw - var(--sidebar-width));
+    pointer-events: none;
+    background-color: rgba(0, 0, 0, 0.1);
   };
 
   &LoaderActive {
@@ -83,7 +84,6 @@
   }
 
   &InnerPreview {
-    // position: relative;
     width: auto;
     height: 100vh;
     display: flex;

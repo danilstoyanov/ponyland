@@ -88,9 +88,6 @@ export class RenderManager {
 
   _setupResultCanvas() {
     this.resultCanvas = document.createElement('canvas');
-
-    debugger;
-
     this.resultCanvas.width = this.imageLayerCanvas.width;
     this.resultCanvas.height = this.imageLayerCanvas.height;
     this.resultCanvasCtx = this.resultCanvas.getContext('2d');
