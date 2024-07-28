@@ -96,6 +96,8 @@ type MediaEditorRangeSelectorProps = RangeSelectorProps & {
   style?: Record<string, string>;
 }
 
+type FilterCache = Map<string, ImageBitmap>;
+
 const MediaEditorRangeSelector = (props: MediaEditorRangeSelectorProps) => {
   const [local, others] = splitProps(props, ['label']);
 
@@ -110,9 +112,7 @@ const MediaEditorRangeSelector = (props: MediaEditorRangeSelectorProps) => {
   };
 
   createEffect(() => {
-    if(props.value !== currentValue()) {
-      setCurrentValue(props.value);
-    }
+    setCurrentValue(props.value);
   });
 
   onMount(() => {
@@ -272,7 +272,6 @@ type MediaEditorFilter = {
 }
 
 type MediaEditorFilterState = {
-  cache: Record<string, ImageBitmap>;
   appliedFilters: MediaEditorFilter[];
   isProcessing: boolean;
 };
@@ -415,7 +414,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
   }
 
   const initialFilterState: MediaEditorFilterState = {
-    cache: {},
     appliedFilters: [],
     isProcessing: false
   };
@@ -429,6 +427,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
   const [state, setState] = createStore<MediaEditorStateType>(initialState);
   const [filterState, setFilterState] = createStore<MediaEditorFilterState>(initialFilterState);
 
+  const filterCache: FilterCache = new Map();
+
   const handleTabClick = (tab: MediaEditorTab) => {
     setActiveTab(tab);
   };
@@ -441,14 +441,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const originalWidth = imageWidth;
     const originalHeight = imageHeight;
 
-    // Calculate the scaling ratio to fit the width
     const widthRatio = previewWidth / originalWidth;
     const newWidth = previewWidth;
     const newHeight = originalHeight * widthRatio;
 
-    // Check if the new height fits within the preview area
     if(newHeight > previewHeight) {
-      // If the height exceeds the preview height, scale down to fit the height
       const heightRatio = previewHeight / originalHeight;
       const newWidth = originalWidth * heightRatio;
       const newHeight = previewHeight;
@@ -644,8 +641,26 @@ export const MediaEditor = (props: MediaEditorProps) => {
     handleTabClick('crop');
   };
 
-  // * FITLER UPDATE WITH RENDER-PIPELINE APPLIED
-  const applyFilters = (canvas: HTMLCanvasElement) => {
+  // * Filters logic
+  function generateCacheKey(filters: MediaEditorFilter[]): string {
+    return filters.map(filter => `${filter.id}:${filter.value}`).join('|');
+  }
+
+  async function applyFilters(canvas: HTMLCanvasElement) {
+    const filters = filterState.appliedFilters;
+    const cacheKey = generateCacheKey(filters);
+
+    /**
+     * Need to think how to support fixed Cache size, for example store no more then 100 entries 🤔
+    */
+    if(filterCache.has(cacheKey)) {
+      const cachedBitmap = filterCache.get(cacheKey);
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(cachedBitmap, 0, 0);
+      return;
+    }
+
     const filterMap: Record<FilterType, any> = {
       brightness: applyBrightness,
       contrast: applyContrast,
@@ -658,17 +673,38 @@ export const MediaEditor = (props: MediaEditorProps) => {
       sharpen: applySharp,
       warmth: applyWarmth,
       vignette: applyVignette
+    };
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImage(), 0, 0, canvas.width, canvas.height); // Draw the original image
+
+    let baseBitmap: ImageBitmap = null;
+
+    for(let i = 0; i < filters.length; i++) {
+      const subFilters = filters.slice(0, i + 1);
+      const subCacheKey = generateCacheKey(subFilters);
+
+      if(filterCache.has(subCacheKey)) {
+        baseBitmap = filterCache.get(subCacheKey);
+      } else {
+        if(baseBitmap) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(baseBitmap, 0, 0);
+        }
+        filterMap[filters[i].id](canvas, filters[i].value);
+        baseBitmap = await createImageBitmap(canvas);
+        filterCache.set(subCacheKey, baseBitmap);
+      }
     }
 
-    filterState.appliedFilters.forEach(filter => {
-      filterMap[filter.id](canvas, filter.value);
-    })
-  };
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(baseBitmap, 0, 0);
+    filterCache.set(cacheKey, baseBitmap);
+  }
 
-  const handleFilterUpdate = (type: FilterType) => {
+  function handleFilterUpdate(type: FilterType) {
     return throttle(async(value: number) => {
       const ctx = imageLayerCanvas.getContext('2d');
-
       const dimensions = getScaledImageSize(previewRef, {
         imageHeight: originalImage().naturalHeight,
         imageWidth: originalImage().naturalWidth
@@ -677,26 +713,37 @@ export const MediaEditor = (props: MediaEditorProps) => {
       ctx.drawImage(workareaImage, 0, 0, dimensions.width, dimensions.height);
 
       setFilterState('appliedFilters', (filters) => {
+        const newFilters = filters.some(v => v.id === type) ?
+          filters.map(v => v.id === type ? {...v, value} : v) :
+          [...filters, {id: type, value}];
+
         if(value === 0) {
           return filters.filter(v => v.id !== type);
         }
 
-        if(filters.some(v => v.id === type)) {
-          return filters.map(v => v.id === type ? {...v, value} : v);
+        const filterIndex = filters.findIndex(v => v.id === type);
+        if(filterIndex !== -1) {
+          const affectedFilters = filters.slice(filterIndex).map(filter => filter.id);
+          for(const key of filterCache.keys()) {
+            const keyFilters = key.split('|').map(k => k.split(':')[0]);
+            if(keyFilters.some((keyFilter, index) => affectedFilters.includes(keyFilter as FilterType) && index >= filterIndex)) {
+              filterCache.delete(key);
+            }
+          }
         }
-
-        return [...filters, {id: type, value}];
+        return newFilters;
       });
 
       // FILTER PERFORMANCE
       const startTime = performance.now();
-      applyFilters(imageLayerCanvas);
+      await applyFilters(imageLayerCanvas);
       const endTime = performance.now();
       const elapsedTime = endTime - startTime;
 
       console.log(`Filter pipeline execution time: ${elapsedTime} milliseconds`);
-    }, 16);
-  };
+    }, 24);
+  }
+
 
   const handleBrigthnessUpdate = handleFilterUpdate('brightness');
   const handleEnhanceUpdate = handleFilterUpdate('enhance');
@@ -735,7 +782,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     });
   };
 
-  // * Entity Handlers
+  // * Entities Handlers
   const selectEntity = (id: number) => {
     setState({selectedEntityId: id});
   };
@@ -755,7 +802,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
     });
   };
 
-  // * Text Entity Handlers
   const addTextEntity = () => {
     const workareaCenterX = imageLayerCanvas.width / 2;
     const workareaCenterY = imageLayerCanvas.height / 2;
@@ -823,7 +869,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const imageLayerCtx = imageLayerCanvas.getContext('2d');
     const drawingLayerCtx = drawingLayerCanvas.getContext('2d');
 
-    // Save the current state of the drawing layer as an image
     const drawingLayerImage = new Image();
     drawingLayerImage.src = drawingLayerCanvas.toDataURL();
 
@@ -848,13 +893,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     setWorkareaDimensions(dimensions);
 
-    // Clear and redraw the filter layer
     if(imageLayerCtx) {
       imageLayerCtx.clearRect(0, 0, imageLayerCanvas.width, imageLayerCanvas.height);
       imageLayerCtx.drawImage(workareaImage, 0, 0, dimensions.width, dimensions.height);
     }
 
-    // Clear and restore the drawing layer with the scaled image
     drawingLayerImage.onload = () => {
       if(drawingLayerCtx) {
         drawingLayerCtx.clearRect(0, 0, drawingLayerCanvas.width, drawingLayerCanvas.height);
@@ -865,7 +908,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const scaleX = dimensions.width / oldDimensions.width;
     const scaleY = dimensions.height / oldDimensions.height;
 
-    // Update coordinates of text entities
     setState('entities', (entities) => {
       return entities.map(entity => ({
         ...entity,
@@ -951,7 +993,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
         URL.revokeObjectURL(objectUrl);
       };
     } else if(props.mediaFile === null) {
-      const png = main_canvas_png; // Placeholder for the actual image source
+      const png = main_canvas_png;
 
       const image = new Image();
 
@@ -979,19 +1021,16 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     setupStickers();
 
-    // setupStickers();
-    // DrawingManagerInstance = new DrawingManager(drawingLayerCanvas, previewContentRef);
-
     window.addEventListener('resize', handleWindowResize);
+  });
+
+  onCleanup(() => {
+    window.removeEventListener('resize', handleWindowResize);
   });
 
   const handleMediaEditorCloseClick = () => {
     props.onClose();
   };
-
-  onCleanup(() => {
-    window.removeEventListener('resize', handleWindowResize);
-  });
 
   createEffect(on(activeTab, () => {
     if(activeTab() === 'brush') {

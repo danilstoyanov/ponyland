@@ -1,6 +1,6 @@
 import {createEffect, JSX, onCleanup, onMount} from 'solid-js';
 import {isCloseToWhite} from '../../../helpers/color';
-import styles from './mediaEditor.module.scss';
+import styles from '../mediaEditor.module.scss';
 
 type MediaEditorEntityType = 'text' | 'sticker';
 

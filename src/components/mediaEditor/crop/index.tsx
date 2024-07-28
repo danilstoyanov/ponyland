@@ -1,7 +1,7 @@
 import {createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
 import {ButtonIconTsx} from '../../buttonIconTsx';
 import type {MediaEditorCropState} from '..';
-import styles from './mediaEditor.module.scss';
+import styles from '../mediaEditor.module.scss';
 
 export type CropAspectRatio = 'Free'
   | 'Original'
