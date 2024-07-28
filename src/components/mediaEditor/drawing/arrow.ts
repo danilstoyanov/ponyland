@@ -23,18 +23,18 @@ function drawArrowhead(
 
   const averageDirectionX = sumX / (points.length - 1);
   const averageDirectionY = sumY / (points.length - 1);
-  const θ = Math.atan2(averageDirectionY, averageDirectionX);
+  const theta = Math.atan2(averageDirectionY, averageDirectionX);
 
   const height = 50 * brushSize / 10;
   const base = 15 * brushSize / 10;
-  const α = Math.PI / 2 - θ;
+  const alpha = Math.PI / 2 - theta;
 
-  const ΔQ = {x: base * Math.cos(α), y: base * Math.sin(α)};
-  const Q = {x: end.x - ΔQ.x, y: end.y + ΔQ.y};
-  const S = {x: end.x + ΔQ.x, y: end.y - ΔQ.y};
+  const deltaQ = {x: base * Math.cos(alpha), y: base * Math.sin(alpha)};
+  const Q = {x: end.x - deltaQ.x, y: end.y + deltaQ.y};
+  const S = {x: end.x + deltaQ.x, y: end.y - deltaQ.y};
 
-  const ΔR = {x: height * Math.cos(θ), y: height * Math.sin(θ)};
-  const R = {x: end.x + ΔR.x, y: end.y + ΔR.y};
+  const deltaR = {x: height * Math.cos(theta), y: height * Math.sin(theta)};
+  const R = {x: end.x + deltaR.x, y: end.y + deltaR.y};
 
   context.beginPath();
   context.moveTo(end.x, end.y);
@@ -44,7 +44,6 @@ function drawArrowhead(
   context.closePath();
   context.fill();
 }
-
 
 export class ArrowTool implements DrawingTool {
   public init({drawingCtx, color, size}: DrawingToolMethodParams) {

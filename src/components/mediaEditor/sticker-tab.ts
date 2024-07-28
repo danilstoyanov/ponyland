@@ -1,9 +1,9 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
+/**
+ * Well, since I don't have much time to refactor the stickers tab component in order to make
+ * lightweight version of it, we just use brute-force copy-paste with small cleanup, in order to render stickers tab
+ * for Media editor, original refence file is:
+ * src/components/emoticonsDropdown/tabs/stickers.ts
  */
-
 import {EmoticonsDropdown} from '../emoticonsDropdown';
 import {Document, MessagesAllStickers, StickerSet} from '../../layer';
 import {MyDocument} from '../../lib/appManagers/appDocsManager';

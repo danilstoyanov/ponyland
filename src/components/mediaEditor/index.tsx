@@ -1,50 +1,36 @@
-import {Portal, render} from 'solid-js/web';
+import {createEffect, createSignal, For, JSX, on, onCleanup, onMount, Show, splitProps} from 'solid-js';
 import {createStore} from 'solid-js/store';
-import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps, onCleanup} from 'solid-js';
+import {Portal, render} from 'solid-js/web';
+import appDownloadManager from '../../lib/appManagers/appDownloadManager';
+import {i18n} from '../../lib/langPack';
+import rootScope from '../../lib/rootScope';
+import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
+import {getMiddleware} from '../../helpers/middleware';
+import {hexaToRgba, hexToRgbaWithOpacity} from '../../helpers/color';
+import throttle from '../../helpers/schedulers/throttle';
+import debounce from '../../helpers/schedulers/debounce';
 import classNames from '../../helpers/string/classNames';
-import {RangeSelectorTsx} from '../rangeSelectorTsx';
+import ProgressivePreloader from '../preloader';
 import RowTsx from '../rowTsx';
+import {RangeSelectorTsx} from '../rangeSelectorTsx';
 import type {RangeSelectorProps} from '../rangeSelectorTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import ColorPickerTsx from '../colorPickerTsx';
-import {i18n} from '../../lib/langPack';
-import rootScope from '../../lib/rootScope';
-import styles from './mediaEditor.module.scss';
-import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
-import {ButtonCornerTsx} from '../buttonCornerTsx';
-import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
-import {getMiddleware} from '../../helpers/middleware';
-import {rotateImage, flipImage, tiltImage, changeImageBitmapSize} from './canvas';
-import debounce from '../../helpers/schedulers/debounce';
-import {
-  applyBrightness,
-  applyContrast,
-  applyVignette,
-  applyEnhance,
-  applySaturation,
-  applyWarmth,
-  applyFade,
-  applyHighlights,
-  applySelectiveShadow,
-  applyGrain,
-  applySharp
-} from './filters';
-import {isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
+import {ButtonCornerTsx} from '../buttonCornerTsx';
+import wrapSticker from '../wrappers/sticker';
+import {applyBrightness, applyContrast, applyEnhance, applyFade, applyGrain, applyHighlights, applySaturation, applySelectiveShadow, applySharp, applyVignette, applyWarmth} from './filters';
+import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './drawing/tools-svg';
+import {isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, BlurTool, EraserTool} from './drawing';
-import StickersTab from './sticker-tab';
-import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import throttle from '../../helpers/schedulers/throttle';
+import {rotateImage, flipImage, tiltImage, changeImageBitmapSize} from './crop/utils';
+import {RenderManager} from './render';
 import EmoticonsDropdown from './emoticons-dropdown';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
-import wrapSticker from '../wrappers/sticker';
-import ProgressivePreloader from '../preloader';
-import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
-import {RenderManager} from './render';
+import styles from './mediaEditor.module.scss';
 import main_canvas_png from './sandbox/main-canvas.png';
 
-/* Navbar & Tabs */
 type FilterType = 'enhance'
   | 'brightness'
   | 'contrast'
@@ -562,7 +548,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     workareaImage = await createImageBitmap(imageLayerCanvas);
   };
 
-  const onCropChange = async(crop: MediaEditorCropState) => {
+  const onCropChange = async(crop: Partial<MediaEditorCropState>) => {
     const prevCropAngle = state.crop.rotate || 0;
     const newCropAngle = crop.rotate
 
@@ -572,7 +558,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     }));
 
     if(newCropAngle && prevCropAngle !== newCropAngle) {
-      // Перезапускаем кроппер
+      // cropper re-running
       const preview = await renderMediaForCrop(newCropAngle) as string;
       const img = new Image();
       img.src = preview;

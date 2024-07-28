@@ -1,7 +1,6 @@
 /*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ * I just mentioned that maintainers started to use SCSS modules, and just followed their approach
+ * This file thought maybe broken down to more atomic files, but I don't have time for this right now, cause deadline is in 5 hours 🙈
  */
 
 @import "../../scss/mixins";
@@ -324,15 +323,6 @@
         justify-content: center;
         background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAOTSURBVHgBbZS9ciNFFIXPHfWMRqMZ/Xgte8kEEQlVfgAiXsC7b+CMjcBFSGI724AqiowMBwSwCVoegIgMAldtQIgoqnZtS7YkS5rR/EjN6R7J2Gt31ak7M9399b2nu0fwSNM4bMG9fAZ3uA+53INz0UU4A3b1GXaWfWwVr+Wn/PSxufIA5n1D0Ph7BONd+NeAR6lLoE7gzhLYzoDWAmjHfXSyE/niPvgeUFd//Rb10SEaN0BIBRvgADbDnQLYMsAYaPLdjGvFx7K/ONkw1C3Mf3OE6OYQbZeDAiCqMasqUKUUh0UEdAhsp+yfE8b+yKNGx/oNqvLJ4uvbDLU7OkC0+AHbU+AJJ7YZmybLCVAbgV7ymd+2DTBZZ8e+kH3RFcV+f/Zc2lnPAuNI/+1v513psJQNtGWgnBSMCTSTzPe8LNeU2iAsHFqt6gOk7vAixexj9ZerDwY+ulHdRT1qwGuyxDZLfsKSWrWy9CpLCyP6l5YLhbSFr6gXyKoZ5pJgivnuDOlzNVDYD3wgISOsC6LIR9DwoFr+GsoYeOWmmHIjLhgCRS1H7CSYYU5YjdFHDPWZOq+gW+f4mEo4NuH8MHAIDlBre3AMtOlruynRRFaBRqLSO6Cq1RQeo/OpOhfsRdzEeCP3f3hUUwibka7umKwC+gQ9k1imFuISotaq8N1Ep6vOaQXXtpbMHnkONaTlehqeiwkPBR202vSX73L7Tb1boR8W6E55IkIjbmTIsxvS/wZjm4N4L0QgeoKVjJDhBqbknCqo5ToW9FDO1NsVzoIcXQMJCAnpe0jC1orGV4AlFZf3SWI4zLICHhSMuMwUCZ1cUJldIEb+j3pb4LWX4FnA4xVSLWbZIUTMHWLkGnSsbKktrUKYiyvGK2Y1ImZulRBb9NS/OXoqxssow27HIYgbUiFME5YzM14yTi9bTmCZpYMxN2HMniG/Da0Fi/5A8lM1how9X79YufjFXcNMZkvCFwT6chdo/TTHw5ZuMp3wuEzsjvsnsHvOll1Jb/6R/s5R+NLACsJSgmYGeOcPUjAbU/acullDr9kbIzjJZXB672+T/iGH8qEerxwcZQQmhNXW/plBmlqaxc3dJ9BkaaAx/JcL+fP4we/LtMUrOV5+pftpBUdzQddk54l1wLYSKCzbenmRw3uRyc+9u4wHf+xNc1/pA/UU+5UP0JWn2NO8yxoX/RXOfy/w7rcc1z9CPs/fn/cf2RZ93AFGcTcAAAAASUVORK5CYII=');
         background-color: transparent;
-
-        // &::after {
-        //   content: '';
-        //   width: 14px;
-        //   height: 14px;
-        //   border-radius: 50%;
-        //   border: 2px solid var(--color-picker-tabs-custom-circle-color, 'white');
-        //   background-color: var(--color-picker-tabs-custom-circle-color);
-        // }
       }
     }
 

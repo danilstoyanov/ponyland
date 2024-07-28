@@ -1,5 +1,5 @@
 /*
-  Support of ImageBitmap seems to be okay now, so let's use it
+  Support of ImageBitmap seems to be okay nowadays, so let's use it 🦄
   https://caniuse.com/?search=imageBitmap
 */
 

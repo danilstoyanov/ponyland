@@ -1,3 +1,6 @@
+/**
+ * The design of tools has some complex SVG's, so we just move them to separate file for easy management
+ */
 export const PenSvg = () => {
   return (
     <svg width="120" height="48" viewBox="0 0 120 48" fill="none" xmlns="http://www.w3.org/2000/svg">

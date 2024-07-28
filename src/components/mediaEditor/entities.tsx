@@ -1,6 +1,6 @@
 import {createEffect, JSX, onCleanup, onMount} from 'solid-js';
-import styles from './mediaEditor.module.scss';
 import {isCloseToWhite} from '../../helpers/color';
+import styles from './mediaEditor.module.scss';
 
 type MediaEditorEntityType = 'text' | 'sticker';
 
@@ -314,8 +314,7 @@ export const TextEntity = (props: TextEntityType) => {
         [styles.TextEntityAppearanceBackgroundWhite]: props.appearance === 'background' && isCloseToWhite(props.color)
       }}
     >
-      <div>New t</div>
-      <div>New testing stuff</div>
+      <div>New text</div>
     </div>
   );
 };

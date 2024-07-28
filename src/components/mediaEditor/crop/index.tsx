@@ -1,6 +1,6 @@
 import {createEffect, createSignal, on, onCleanup, onMount} from 'solid-js';
-import {ButtonIconTsx} from '../buttonIconTsx';
-import type {MediaEditorCropState} from '.';
+import {ButtonIconTsx} from '../../buttonIconTsx';
+import type {MediaEditorCropState} from '..';
 import styles from './mediaEditor.module.scss';
 
 export type CropAspectRatio = 'Free'
@@ -20,13 +20,13 @@ export type CropAspectRatio = 'Free'
 interface CropPops {
   state: MediaEditorCropState;
   image: HTMLImageElement;
-  onCropChange: any;
+  onCropChange: (cropState: Partial<MediaEditorCropState>) => Promise<void>;
 }
 
 type CropBarProps = {
-  onRotate: any;
-  onFlip: any;
-  onAngleChange: any;
+  onRotate: () => void;
+  onFlip: () => void;
+  onAngleChange: (angle: number) => void;
 };
 
 const CropBar = (props: Partial<CropBarProps>) => {
@@ -160,7 +160,7 @@ const CropBar = (props: Partial<CropBarProps>) => {
           class={styles.MediaEditorCropBarDegrees}
           onMouseDown={onMouseDown}
         >
-          {degrees.map((degree, idx) => (
+          {degrees.map((degree) => (
             <div class={styles.MediaEditorCropBarDegree} data-degree={degree}>
               {degree}
             </div>
@@ -178,6 +178,11 @@ const CropBar = (props: Partial<CropBarProps>) => {
   );
 };
 
+/**
+ * The current WEBK app has some kind of cropping component in once place, current implementation partially is based on it
+ * at least we try to re-use some styles of it
+ * /src/lib/cropper.ts
+ */
 export const Crop = (props: CropPops) => {
   function handleCropChange(cropState: Partial<MediaEditorCropState>) {
     props.onCropChange(cropState);

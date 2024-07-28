@@ -25,7 +25,6 @@ export class VideoStickerRenderer extends Renderer {
       return new Promise((resolve) => {
         const capturedFrames: ImageBitmap[] = [];
         const totalFrames = Math.floor((duration / 1000) * fps);
-        const captureInterval = 1000 / fps;
 
         const captureFrame = async() => {
           if(capturedFrames.length >= totalFrames) {

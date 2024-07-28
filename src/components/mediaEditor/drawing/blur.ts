@@ -1,3 +1,9 @@
+/**
+ * I couldn't finish this tool due to the hard deadlines, but I though it would be a good idea
+ * to implemenet similar kind of algorithm which guys from Canva app use for applying this kind of blur 🤔
+ * https://www.canva.com/features/photo-blur/
+ */
+
 import type {DrawingContext, DrawingTool, DrawingToolMethodParams} from './drawing';
 
 export class BlurTool implements DrawingTool {
@@ -18,7 +24,6 @@ export class BlurTool implements DrawingTool {
   }
 
   public drawOnStart({drawingCtx, workingStrokes}: DrawingContext) {
-    // Drawing logic before the actual blur effect is applied
     if(workingStrokes.length === 0) {
       return;
     }
@@ -32,7 +37,6 @@ export class BlurTool implements DrawingTool {
   }
 
   public draw({drawingCtx, lastLength, workingStrokes}: DrawingContext) {
-    // Drawing logic to visualize the path while drawing
     const length = workingStrokes.length;
 
     if(length <= lastLength) {
@@ -56,7 +60,6 @@ export class BlurTool implements DrawingTool {
   }
 
   public drawOnEnd({drawingCtx, imageCtx, workingStrokes}: DrawingContext) {
-    // Calculate the bounding box of the drawn area using workingStrokes
     let minX = Number.MAX_VALUE;
     let minY = Number.MAX_VALUE;
     let maxX = Number.MIN_VALUE;
@@ -115,10 +118,8 @@ export class BlurTool implements DrawingTool {
     }
     offScreenCtxBrush.stroke();
 
-    // Clear the white brush strokes on the drawing context
     drawingCtx.clearRect(minX, minY, rectWidth, rectHeight);
 
-    // Composite the blurred image and brush strokes on the third off-screen canvas
     offScreenCtxCombined.drawImage(offScreenCanvasBlurred, 0, 0);
     offScreenCtxCombined.globalCompositeOperation = 'destination-in';
     offScreenCtxCombined.drawImage(offScreenCanvasBrush, 0, 0);

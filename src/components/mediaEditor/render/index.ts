@@ -1,3 +1,7 @@
+/**
+ * This will be main class for managing rendering process, actually this could be done in FP style too,
+ * but in order to be consistent with the codebase we can utilize some classes instead
+ */
 import type {TextEntityType, StickerEntityType} from '../entities';
 import {StaticStickerRenderer} from './static-sticker';
 import {AnimatedStickerRenderer} from './animated-sticker';
@@ -72,7 +76,7 @@ export class RenderManager {
     // 1 Render base layer with cropped image with filters applied
     this.resultCanvasCtx.drawImage(this.imageLayerCanvas, 0, 0);
 
-    // 2 Rendering of drawings on top of the image layer
+    // 2 Render of drawings on top of the image layer
     this.resultCanvasCtx.drawImage(this.drawingLayerCanvas, 0, 0);
 
     // 3 Render of text entities on top of image + drawings
@@ -113,8 +117,6 @@ export class RenderManager {
 
       const frames = [...animatedStickersFrames, ...videoStickersFrames];
 
-      console.log('frames: ', frames);
-
       const videoBlob = await this.videoComposer.createVideoFromFrames(this.resultCanvas, [...animatedStickers, ...videoStickers], frames, 48);
 
       return this._exportVideo(videoBlob);
@@ -144,13 +146,11 @@ export class RenderManager {
   }
 
   private async _exportImage(): Promise<File> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       this.resultCanvas.toBlob((blob) => {
         if(blob) {
-          const file = new File([blob], 'exported_image.png', {type: 'image/png', lastModified: Date.now()});
+          const file = new File([blob], 'edited_image.png', {type: 'image/png', lastModified: Date.now()});
           resolve(file);
-        } else {
-          reject(new Error('Canvas toBlob conversion failed.'));
         }
       }, 'image/png');
     });
@@ -158,7 +158,7 @@ export class RenderManager {
 
   private async _exportVideo(blob: Blob): Promise<File> {
     return new Promise((resolve) => {
-      const file = new File([blob], 'exported_video.mp4', {type: 'video/mp4', lastModified: Date.now()});
+      const file = new File([blob], 'edited_video.mp4', {type: 'video/mp4', lastModified: Date.now()});
       resolve(file);
     });
   }

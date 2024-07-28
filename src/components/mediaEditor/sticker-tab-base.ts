@@ -1,9 +1,9 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
+/**
+ * Well, since I don't have much time to refactor the stickers tab component in order to make
+ * lightweight version of it, we just use brute-force copy-paste with small cleanup, in order to render stickers tab
+ * for Media editor, original refence file is:
+ * src/components/emoticonsDropdown/tab.ts
  */
-
 import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '../emoticonsDropdown';
 import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
@@ -151,7 +151,7 @@ export default class StickerTabBase<Category extends StickersTabCategory<any, an
         };
       }, this.processSearchResult);
 
-      const loading = this.searchNoLoader ? undefined : createMemo(() => searching() && element.loading);
+      const loading: any = this.searchNoLoader ? undefined : createMemo(() => searching() && element.loading);
       const shouldMoveSearch = createMemo(() => focused() || searching() || !!group());
       const shouldUseContainer = createMemo(() => element() || this.categoriesContainer);
 
