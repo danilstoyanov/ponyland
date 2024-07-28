@@ -977,6 +977,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
       setOriginalImage(image);
     };
 
+    setIsLoading(true);
+
     if(props.mediaFile instanceof File) {
       const image = new Image();
 
@@ -1025,6 +1027,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
     ProgressivePreloaderInstance.attach(loaderRef, false);
 
     setupStickers();
+
+    setIsLoading(false);
 
     // setInterval(() => {
     //   setIsLoading(isLoading() ? false : true);
