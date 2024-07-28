@@ -21,7 +21,7 @@ export class TextRenderer extends Renderer {
     const node = document.querySelector(`[data-ref="${entity.id}"]`);
     const textNodes = node.querySelectorAll('div');
 
-    resultCanvasCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+    resultCanvasCtx.font = `${entity.fontSize}px "${entity.fontFamily}"`;
     resultCanvasCtx.textBaseline = 'middle';
 
     const paddingTop = 4;
@@ -84,7 +84,7 @@ export class TextRenderer extends Renderer {
     const node = document.querySelector(`[data-ref="${entity.id}"]`);
     const textNodes = node.querySelectorAll('div');
 
-    resultCanvasCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+    resultCanvasCtx.font = `${entity.fontSize}px "${entity.fontFamily}"`;
     resultCanvasCtx.textBaseline = 'hanging';
     resultCanvasCtx.fillStyle = entity.color;
 
@@ -132,9 +132,11 @@ export class TextRenderer extends Renderer {
     const node = document.querySelector(`[data-ref="${entity.id}"]`);
     const textNodes = node.querySelectorAll('div');
 
-    resultCanvasCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
+    resultCanvasCtx.font = `${entity.fontSize}px "${entity.fontFamily}"`;
     resultCanvasCtx.textBaseline = 'hanging';
     resultCanvasCtx.fillStyle = entity.color;
+
+    console.log(resultCanvasCtx.font);
 
     let maxWidth = 0;
     let totalHeight = 0;
@@ -170,8 +172,9 @@ export class TextRenderer extends Renderer {
           break;
       }
 
-      resultCanvasCtx.strokeStyle = '#000';
-      resultCanvasCtx.lineWidth = 5;
+      resultCanvasCtx.fillStyle = 'white';
+      resultCanvasCtx.strokeStyle = entity.color;
+      resultCanvasCtx.lineWidth = 4;
       resultCanvasCtx.strokeText(text, x, startY);
       resultCanvasCtx.fillText(text, x, startY);
 
@@ -180,7 +183,7 @@ export class TextRenderer extends Renderer {
   }
 
   private _calculateBorderRadius(entity: TextEntityType, textNodes: NodeListOf<HTMLDivElement>, index: number) {
-    const radius = 8;
+    const radius = 12;
     let borderRadius = [0, 0, 0, 0];
     const currentNode = textNodes[index];
     const nextNode = textNodes[index + 1];

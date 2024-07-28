@@ -13,9 +13,6 @@ import LazyLoadQueue from '../lazyLoadQueue';
 import Scrollable, {ScrollableX} from '../scrollable';
 import appSidebarRight from '../sidebarRight';
 import StickyIntersector from '../stickyIntersector';
-// import EmojiTab, {EmojiTabCategory, getEmojiFromElement} from '../tabs/emoji';
-// import GifsTab from './tabs/gifs';
-// import StickersTab from './tabs/stickers';
 import StickersTab from './sticker-tab';
 import {MOUNT_CLASS_TO} from '../../config/debug';
 import AppGifsTab from '../sidebarRight/tabs/gifs';
@@ -421,24 +418,6 @@ export class EmoticonsDropdown {
 
   public addLazyLoadQueueRepeat(lazyLoadQueue: LazyLoadQueueIntersector, processInvisibleDiv: (div: HTMLElement) => void, middleware: Middleware) {
     const listenerSetter = new ListenerSetter();
-    // listenerSetter.add(this)('close', () => {
-    //   lazyLoadQueue.lock();
-    // });
-
-    // listenerSetter.add(this)('closed', () => {
-    //   const divs = lazyLoadQueue.intersector.getVisible();
-
-    //   for(const div of divs) {
-    //     processInvisibleDiv(div);
-    //   }
-
-    //   lazyLoadQueue.intersector.clearVisible();
-    // });
-
-    // listenerSetter.add(this)('opened', () => {
-    //   lazyLoadQueue.unlockAndRefresh();
-    // });
-
     middleware.onClean(() => {
       listenerSetter.removeAll();
     });

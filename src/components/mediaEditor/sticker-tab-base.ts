@@ -6,14 +6,12 @@
 
 import {EmoticonsTab, EmoticonsDropdown, EMOTICONSSTICKERGROUP, EMOJI_TEXT_COLOR} from '../emoticonsDropdown';
 import createStickersContextMenu from '../../helpers/dom/createStickersContextMenu';
-import customProperties from '../../helpers/dom/customProperties';
 import positionElementByIndex from '../../helpers/dom/positionElementByIndex';
 import {IgnoreMouseOutType} from '../../helpers/dropdownHover';
 import ListenerSetter from '../../helpers/listenerSetter';
 import {MiddlewareHelper, getMiddleware, Middleware} from '../../helpers/middleware';
 import safeAssign from '../../helpers/object/safeAssign';
 import Animated from '../../helpers/solid/animations';
-import windowSize from '../../helpers/windowSize';
 import {EmojiGroup, StickerSet} from '../../layer';
 import {AppManagers} from '../../lib/appManagers/managers';
 import {LangPackKey, i18n} from '../../lib/langPack';
@@ -27,8 +25,6 @@ import VisibilityIntersector from '../visibilityIntersector';
 import StickersTabCategory, {EmoticonsTabStyles, StickersTabStyles} from '../emoticonsDropdown/category';
 import EmoticonsSearch from '../emoticonsDropdown/search';
 import wrapStickerSetThumb from '../wrappers/stickerSetThumb';
-import wrapEmojiText from '../../lib/richTextProcessor/wrapEmojiText';
-import type {MyDocument} from '../../lib/appManagers/appDocsManager';
 import SuperStickerRenderer from '../emoticonsDropdown/tabs/SuperStickerRenderer';
 
 export default class StickerTabBase<Category extends StickersTabCategory<any, any>, T = any> implements EmoticonsTab {

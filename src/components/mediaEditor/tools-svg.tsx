@@ -13,7 +13,6 @@ export const PenSvg = () => {
             fill="currentColor" />
           <rect x="76" y="15" width="4" height="18" rx="0.5" fill="currentColor" />
         </g>
-        <rect x="16" width="48" height="16" transform="rotate(90 16 0)" fill="url(#paint0_linear_1_224)" />
       </g>
       <defs>
         <filter id="filter0_iiii_1_224" x="0" y="10" width="116.323" height="28" filterUnits="userSpaceOnUse"
@@ -71,7 +70,6 @@ export const ArrowSvg = () => {
           </g>
           <path d="M92 15C94.2091 15 96 16.7909 96 19V29C96 31.2091 94.2091 33 92 33V15Z" fill="currentColor" />
         </g>
-        <rect x="16" width="48" height="16" transform="rotate(90 16 0)" fill="url(#paint1_linear_1_230)" />
       </g>
       <defs>
         <filter id="filter0_iiii_1_230" x="0" y="10" width="99" height="28" filterUnits="userSpaceOnUse"
@@ -137,7 +135,6 @@ export const BrushSvg = () => {
             d="M102 19H106.434C106.785 19 107.111 19.1843 107.291 19.4855L112.091 27.4855C112.491 28.152 112.011 29 111.234 29H102V19Z"
             fill="currentColor" />
         </g>
-        <rect x="16" width="48" height="16" transform="rotate(90 16 0)" fill="url(#paint0_linear_1_264)" />
       </g>
       <defs>
         <filter id="filter0_iiii_1_264" x="0" y="10" width="105" height="28" filterUnits="userSpaceOnUse"
@@ -214,7 +211,6 @@ export const NeonBrushSvg = () => {
             d="M102 19H107.146C108.282 19 109.323 19.6487 109.601 20.7506C109.813 21.593 110 22.703 110 24C110 25.297 109.813 26.407 109.601 27.2494C109.323 28.3513 108.282 29 107.146 29H102V19Z"
             fill="currentColor" />
         </g>
-        <rect x="16" width="48" height="16" transform="rotate(90 16 0)" fill="url(#paint0_linear_1_270)" />
       </g>
       <defs>
         <filter id="filter0_f_1_270" x="96" y="13" width="20" height="22" filterUnits="userSpaceOnUse"
@@ -329,7 +325,6 @@ export const BlurSvg = () => {
           <path d="M77 33V15H76V33H77Z" fill="black" fill-opacity="0.33" />
           <path d="M94 33V15H93V33H94Z" fill="black" fill-opacity="0.33" />
         </g>
-        <rect x="16" width="48" height="16" transform="rotate(90 16 0)" fill="url(#paint0_linear_1_249)" />
       </g>
       <defs>
         <filter id="filter0_f_1_249" x="86.5" y="12" width="30.5" height="24" filterUnits="userSpaceOnUse"
@@ -425,7 +420,6 @@ export const EraserSvg = () => {
           </g>
           <path d="M79 33.5V14.5H78V33.5H79Z" fill="black" fill-opacity="0.33" />
         </g>
-        <rect x="16" width="48" height="16" transform="rotate(90 16 0)" fill="url(#paint0_linear_1_239)" />
       </g>
       <defs>
         <filter id="filter0_i_1_239" x="95" y="13" width="19" height="20" filterUnits="userSpaceOnUse"

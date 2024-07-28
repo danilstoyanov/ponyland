@@ -12,8 +12,6 @@ export class StaticStickerRenderer extends Renderer {
     const img = new Image();
     img.src = imageUrl;
 
-
-    // waiting for load
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = reject;

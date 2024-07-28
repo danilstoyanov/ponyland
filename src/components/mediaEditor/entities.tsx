@@ -1,7 +1,6 @@
 import {createEffect, JSX, onCleanup, onMount} from 'solid-js';
-import classNames from '../../helpers/string/classNames';
 import styles from './mediaEditor.module.scss';
-import {hexToRgb, isCloseToWhite} from '../../helpers/color';
+import {isCloseToWhite} from '../../helpers/color';
 
 type MediaEditorEntityType = 'text' | 'sticker';
 
@@ -31,7 +30,6 @@ export interface TextEntityType extends MediaEditorEntity {
   appearance: TextEntityAlignmentAppearance;
   color: string;
   fontSize: number;
-  backgroundColor: string;
   textAlign: TextEntityAlignment;
   fontFamily: TextEntityFontFamily;
 };
@@ -190,7 +188,7 @@ export const TextEntity = (props: TextEntityType) => {
     }
 
     const childNodes = Array.from(ref.children) as HTMLDivElement[];
-    const radius = 10; // Define the border radius value here
+    const radius = 16;
 
     childNodes.forEach((textNode, index) => {
       if(childNodes.length === 1) {
@@ -220,6 +218,9 @@ export const TextEntity = (props: TextEntityType) => {
           }
         } else if(textAlign === 'right') {
           borderRadius = [radius, radius, 0, 0];
+          if(nextWidth <= currentWidth) {
+            borderRadius = [radius, radius, 0, radius];
+          }
         }
       } else if(index === childNodes.length - 1) {
         if(textAlign === 'left') {
@@ -266,18 +267,27 @@ export const TextEntity = (props: TextEntityType) => {
         }
       }
 
-      // Apply border radius to the current element
       textNode.style.borderRadius = `${borderRadius[0]}px ${borderRadius[1]}px ${borderRadius[2]}px ${borderRadius[3]}px`;
+    });
+  };
+
+  const applySpacingAdjustment = (ref: HTMLDivElement) => {
+    const childNodes = Array.from(ref.children) as HTMLDivElement[];
+
+    childNodes.forEach((textNode, index) => {
+      textNode.style.transform = `translateY(-${index + 1}px)`;
     });
   };
 
   const handleTextEntityContentUpdate = (event: InputEvent) => {
     assignBorderRadiusToChildren(event.target as HTMLDivElement, props.textAlign);
+    applySpacingAdjustment(event.target as HTMLDivElement);
   };
 
   createEffect(() => {
     if(props.appearance === 'background') {
       assignBorderRadiusToChildren(textEntityRef, props.textAlign);
+      applySpacingAdjustment(textEntityRef);
     }
   });
 
@@ -304,11 +314,8 @@ export const TextEntity = (props: TextEntityType) => {
         [styles.TextEntityAppearanceBackgroundWhite]: props.appearance === 'background' && isCloseToWhite(props.color)
       }}
     >
-      <div>And</div>
-      <div>small</div>
-      <div>very small</div>
-      <div>text</div>
-      <div>and that's it!</div>
+      <div>New t</div>
+      <div>New testing stuff</div>
     </div>
   );
 };

@@ -1,6 +1,9 @@
 import type {TextEntityType, StickerEntityType} from '../entities';
 import {StaticStickerRenderer} from './static-sticker';
+import {AnimatedStickerRenderer} from './animated-sticker';
+import {VideoStickerRenderer} from './video-sticker';
 import {TextRenderer} from './text';
+import {VideoComposer} from './video-composer';
 
 interface RenderManagerParams {
   entities: Array<TextEntityType | StickerEntityType>;
@@ -11,6 +14,9 @@ interface RenderManagerParams {
 export class RenderManager {
   private textRenderer: TextRenderer;
   private staticStickerRenderer: StaticStickerRenderer;
+  private animatedStickerRenderer: AnimatedStickerRenderer;
+  private videoStickerRenderer: VideoStickerRenderer;
+  private videoComposer: VideoComposer;
 
   private textEntities: TextEntityType[];
   private stickerEntities: StickerEntityType[];
@@ -36,6 +42,9 @@ export class RenderManager {
 
     this.textRenderer = new TextRenderer({imageLayerCanvas, drawingLayerCanvas});
     this.staticStickerRenderer = new StaticStickerRenderer({imageLayerCanvas, drawingLayerCanvas});
+    this.animatedStickerRenderer = new AnimatedStickerRenderer({imageLayerCanvas, drawingLayerCanvas});
+    this.videoStickerRenderer = new VideoStickerRenderer({imageLayerCanvas, drawingLayerCanvas});
+    this.videoComposer = new VideoComposer();
 
     this.textEntities = entities.filter(item => item.type === 'text') as TextEntityType[];
     this.stickerEntities = entities.filter(item => item.type === 'sticker') as StickerEntityType[];
@@ -78,11 +87,54 @@ export class RenderManager {
     };
 
     // 5 Render of animated stickers
-    const animatedStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 2 || sticker.stickerType === 3);
+    const animatedStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 2);
+    const videoStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 3);
 
-    if(animatedStickers.length === 0) {
+    if(animatedStickers.length === 0 && videoStickers.length === 0) {
       const media = await this._exportImage();
+
+      const url = window.URL.createObjectURL(media);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = 'image_with_text.png';
+      document.body.appendChild(a);
+      a.click();
+
+      setTimeout(() => {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      // console.log('debugging render');
+
       return media;
+    } else {
+      const animatedStickersFrames = await this.animatedStickerRenderer.render(animatedStickers, 3000, 48);
+      const videoStickersFrames = await this.videoStickerRenderer.render(videoStickers, 3000, 48);
+
+      const frames = [...animatedStickersFrames, ...videoStickersFrames];
+
+      console.log('frames: ', frames);
+
+      const videoBlob = await this.videoComposer.createVideoFromFrames(this.resultCanvas, [...animatedStickers, ...videoStickers], frames, 48);
+
+      return this._exportVideo(videoBlob);
+
+      // const url = window.URL.createObjectURL(videoBlob);
+      // const a = document.createElement('a');
+      // a.style.display = 'none';
+      // a.href = url;
+      // a.download = 'animated-sticker.mp4';
+      // document.body.appendChild(a);
+      // a.click();
+
+      // setTimeout(() => {
+      //   document.body.removeChild(a);
+      //   window.URL.revokeObjectURL(url);
+      // }, 100);
+
+      // console.log('debugging render');
     };
   };
 
@@ -93,7 +145,7 @@ export class RenderManager {
     this.resultCanvasCtx = this.resultCanvas.getContext('2d');
   }
 
-  async _exportImage(): Promise<File> {
+  private async _exportImage(): Promise<File> {
     return new Promise((resolve, reject) => {
       this.resultCanvas.toBlob((blob) => {
         if(blob) {
@@ -106,5 +158,10 @@ export class RenderManager {
     });
   }
 
-  _exportVideo() {};
+  private async _exportVideo(blob: Blob): Promise<File> {
+    return new Promise((resolve) => {
+      const file = new File([blob], 'exported_video.mp4', {type: 'video/mp4', lastModified: Date.now()});
+      resolve(file);
+    });
+  }
 }
