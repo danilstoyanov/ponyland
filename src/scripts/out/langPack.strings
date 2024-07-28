@@ -1108,7 +1108,7 @@
 "RestrictSavingContentInfoChannel" = "Subscribers won't be able to copy, save or forward content from this channel.";
 "ClearOtherSessionsHelp" = "Logs out all devices except for this one.";
 "SessionsListInfo" = "The official Telegram app is available for Android, iPhone, iPad, Windows, macOS and Linux.";
-"SponsoredMessage" = "sponsored";
+"SponsoredMessage" = "ad";
 "OpenChannelPost" = "VIEW POST";
 "FilterNameHint" = "Folder name";
 "BotStart" = "START";
@@ -2124,7 +2124,7 @@
 "Chat.Message.ViewGroup" = "VIEW GROUP";
 "Chat.Message.SendMessage" = "SEND MESSAGE";
 "Chat.Message.Sponsored.What" = "What are sponsored messages?";
-"Chat.Message.Sponsored.Link" = "https://promote.telegram.org";
+"Chat.Message.Sponsored.Link" = "https://ads.telegram.org";
 "Chat.Voice.Transribe.Error" = "No speech detected";
 "Chat.VoiceChat.JoinLink.Participants_ZeroValueHolder" = "no one joined yet";
 "Checkout.2FA.Text" = "Saving payment details is only available with 2-Step Verification.";
@@ -2360,7 +2360,7 @@
 "MediaEditor.Filter.Sharpen" = "Sharpen";
 "MediaEditor.Crop.Apply" = "Apply Crop";
 "MediaEditor.Crop.Rest" = "Reset Crop";
-"MediaEditor.AspectRatio.Title" = "AspectRatio";
+"MediaEditor.AspectRatio.Title" = "Aspect Ratio";
 "MediaEditor.AspectRatio.Free" = "Free";
 "MediaEditor.AspectRatio.Original" = "Original";
 "MediaEditor.AspectRatio.Square" = "Square";
@@ -2401,7 +2401,7 @@
 "Schedule.SendDate" = "Send on %@ at %@";
 "Schedule.SendWhenOnline" = "Send When Online";
 "Story.Tooltip.MessageSent" = "Message Sent.";
-"Sticker.Premium.Click.Info" = "This pack contains premium stickers like this one. [View Pack]()";
+"Sticker.Premium.Click.Info" = "This set contains premium stickers like this one. [View Set]()";
 "Stickers.Recent" = "Recent";
 "StickerSet.DontExist" = "Sorry, this sticker set doesn't seem to exist.";
 "Text.Context.Copy.Username" = "Copy Username";

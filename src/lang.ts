@@ -2705,7 +2705,7 @@ const lang = {
   'MediaEditor.Filter.Sharpen': 'Sharpen',
   'MediaEditor.Crop.Apply': 'Apply Crop',
   'MediaEditor.Crop.Rest': 'Reset Crop',
-  'MediaEditor.AspectRatio.Title': 'AspectRatio',
+  'MediaEditor.AspectRatio.Title': 'Aspect Ratio',
   'MediaEditor.AspectRatio.Free': 'Free',
   'MediaEditor.AspectRatio.Original': 'Original',
   'MediaEditor.AspectRatio.Square': 'Square',
