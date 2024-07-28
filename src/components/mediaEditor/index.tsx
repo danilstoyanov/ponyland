@@ -29,7 +29,9 @@ import EmoticonsDropdown from './emoticons-dropdown';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
 import styles from './mediaEditor.module.scss';
-import main_canvas_png from './sandbox/CROP_DEBUGGER.png';
+// import main_canvas_png from './sandbox/CROP_DEBUGGER.png';
+import main_canvas_png from './sandbox/main-canvas.png';
+
 
 type FilterType = 'enhance'
   | 'brightness'
@@ -584,10 +586,10 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     setIsLoading(true);
 
-    const t0 = performance.now();
+    const renderStart = performance.now();
     const media = await renderer.render();
-    const t1 = performance.now();
-    console.log(`Rendering of video took ${(t1 - t0) / 1000} seconds.`);
+    const renderEnd = performance.now();
+    console.log(`Rendering of video took ${(renderEnd - renderStart) / 1000} seconds.`);
 
     setIsLoading(false);
 
@@ -1061,8 +1063,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
     <div class={styles.MediaEditor}>
 
       <div style={{
-        // 'display': 'none',
-        'position': 'absolute',
+        'display': 'none',
+        // 'position': 'absolute',
         'top': 0,
         'left': 0,
         'width': '200px',
@@ -1177,6 +1179,19 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
             <div class={styles.MediaEditorSidebarHeaderTitle}>
               {i18n('MediaEditor.Title')}
+            </div>
+
+            <div class={styles.MediaEditorSidebarHeaderUndoRedo}>
+              <ButtonIconTsx
+                icon="undo"
+                noRipple={true}
+                onClick={() => alert('Few hours to deadline, could not finish 🙈')}
+              />
+              <ButtonIconTsx
+                icon="redo"
+                noRipple={true}
+                onClick={() => alert('Few hours to deadline, could not finish 🙈')}
+              />
             </div>
           </div>
 
@@ -1555,7 +1570,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
                     <div>
                       <div class={styles.MediaEditorSidebarSectionHeader}>
-                        Tool
+                        {i18n('MediaEditor.ControlLabel.Tool')}
                       </div>
 
                       <MediaEditorTool

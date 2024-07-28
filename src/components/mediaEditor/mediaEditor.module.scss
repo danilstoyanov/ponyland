@@ -133,6 +133,11 @@
         font-size: 1.25rem;
         color: var(--primary-text-color);
       }
+
+      &UndoRedo {
+        display: flex;
+        align-items: center;
+      }
     }
 
     &SectionHeader {
@@ -471,47 +476,48 @@
   }
 
   &CornerHandle.TopLeft {
-    top: -20px;
-    left: -20px;
+    top: -10px;
+    left: -10px;
   }
 
   &CornerHandle.TopLeft &Corner {
-    bottom: 0;
-    right: 0;
+    bottom: 10px;
+    right: 10px;
   }
 
   &CornerHandle.TopLeft {
-    top: -20px;
-    right: -20px;
+    top: -10px;
+    right: -10px;
   }
 
   &CornerHandle.TopRight {
-    top: -20px;
-    right: -20px;
+    top: -10px;
+    right: -10px;
   }
 
   &CornerHandle.TopRight &Corner {
-    left: 0;
-    bottom: 0;
+    left: 10px;
+    bottom: 10px;
   }
 
   &CornerHandle.BottomLeft {
-    bottom: -20px;
-    left: -20px;
+    bottom: -10px;
+    left: -10px;
   }
 
   &CornerHandle.BottomLeft &Corner {
-    right: 0;
+    right: 10px;
+    bottom: 8px;
   }
 
   &CornerHandle.BottomRight {
-    bottom: -20px;
-    right: -20px;
+    bottom: -10px;
+    right: -10px;
   }
 
   &CornerHandle.BottomRight &Corner {
-    left: 0;
-    top: 0;
+    left: 10px;
+    top: 10px;
   }
 }
 
@@ -725,19 +731,19 @@
 .MediaEditorCrop {
   div[data-resize-action=top-left]:hover {
     cursor: nwse-resize;
-    background-color: green;
+    // background-color: green;
   }
   div[data-resize-action=top-right]:hover {
     cursor: nesw-resize;
-    background-color: green;
+    // background-color: green;
   }
   div[data-resize-action=bottom-left]:hover {
     cursor: nesw-resize;
-    background-color: green;
+    // background-color: green;
   }
   div[data-resize-action=bottom-right]:hover {
     cursor: nwse-resize;
-    background-color: green;
+    // background-color: green;
   }
 }
 
@@ -758,7 +764,7 @@
 
 :global(.crop-grid) .TransformableEntityCornerHandle {
   pointer-events: all;
-  background-color: red;
+  // background-color: red;
 }
 
 :global(.crop-dashed) {
@@ -795,62 +801,4 @@
 
 .MediaEditorRow:global(.row-with-padding .row-icon) {
   color: var(--primary-text-color);
-}
-
-.CropCorner {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: #fff;
-}
-
-.CropCornerHandle {
-  position: absolute;
-  width: 48px;
-  height: 48px;
-}
-
-.CropCornerHandle.TopLeft {
-  top: -20px;
-  left: -20px;
-}
-
-.CropCornerHandle.TopLeft .CropCorner {
-  bottom: 0;
-  right: 0;
-}
-
-.CropCornerHandle.TopLeft {
-  top: -20px;
-  right: -20px;
-}
-
-.CropCornerHandle.TopRight {
-  top: -20px;
-  right: -20px;
-}
-
-.CropCornerHandle.TopRight .CropCorner {
-  left: 0;
-  bottom: 0;
-}
-
-.CropCornerHandle.BottomLeft {
-  bottom: -20px;
-  left: -20px;
-}
-
-.CropCornerHandle.BottomLeft .CropCorner {
-  right: 0;
-}
-
-.CropCornerHandle.BottomRight {
-  bottom: -20px;
-  right: -20px;
-}
-
-.CropCornerHandle.BottomRight .CropCorner {
-  left: 0;
-  top: 0;
 }
