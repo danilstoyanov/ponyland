@@ -117,15 +117,6 @@ export class RenderManager {
     const videoStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 3);
 
     if(animatedStickers.length === 0 && videoStickers.length === 0) {
-      const canvas = this.resultCanvasCtx.canvas;
-      const dataURL = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = dataURL;
-      link.download = 'sticker_image_before_export.png';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
       const media = await this._exportImage();
 
       return media;
