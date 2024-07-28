@@ -58,6 +58,7 @@ interface TransformableEntityProps {
   width: number | 'auto';
   height: number | 'auto';
   isSelected: boolean;
+  isResizable: boolean;
   previewRef: HTMLDivElement;
   children: JSX.Element;
   workareaDimensions: {
@@ -66,6 +67,7 @@ interface TransformableEntityProps {
   };
   controls?: JSX.Element[];
   onMove?: ({x, y}: {x: number; y: number}) => void;
+  onResize?: ({width, height}: {width: number; height: number}) => void;
 }
 
 export function isTextEntity(entity: MediaEditorEntity): entity is TextEntityType {
@@ -83,24 +85,30 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
   let offsetX = 0;
   let offsetY = 0;
   let isDragging = false;
+  let isResizing = false;
   let initialX = props.x;
   let initialY = props.y;
 
   let currentTranslateX = 0;
   let currentTranslateY = 0;
 
-  const handleMouseDown = (event: any) => {
-    isDragging = true;
-    initialX = event.clientX;
-    initialY = event.clientY;
-    const rect = transformarableEntityRef.getBoundingClientRect();
-    offsetX = rect.left - props.previewRef.getBoundingClientRect().left;
-    offsetY = rect.top - props.previewRef.getBoundingClientRect().top;
-    transformarableEntityRef.classList.add('dragging');
+  const handleMouseDown = (event: MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if(target.dataset.resizeAction) {
+      handleResize(event, target.dataset.resizeAction);
+    } else {
+      isDragging = true;
+      initialX = event.clientX;
+      initialY = event.clientY;
+      const rect = transformarableEntityRef.getBoundingClientRect();
+      offsetX = rect.left - props.previewRef.getBoundingClientRect().left;
+      offsetY = rect.top - props.previewRef.getBoundingClientRect().top;
+      transformarableEntityRef.classList.add('dragging');
+    }
   };
 
-  const handleMouseMove = (event: any) => {
-    if(isDragging) {
+  const handleMouseMove = (event: MouseEvent) => {
+    if(isDragging && !isResizing) {
       const dx = event.clientX - initialX;
       const dy = event.clientY - initialY;
       currentTranslateX = offsetX + dx;
@@ -118,7 +126,72 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
 
   const handleMouseUp = () => {
     isDragging = false;
+    isResizing = false;
     transformarableEntityRef.classList.remove('dragging');
+  };
+
+  const handleResize = (event: MouseEvent, action: string) => {
+    isResizing = true;
+    const startX = event.clientX;
+    const startY = event.clientY;
+
+    const initialWidth = transformarableEntityRef.offsetWidth;
+    const initialHeight = transformarableEntityRef.offsetHeight;
+    const initialLeft = transformarableEntityRef.offsetLeft;
+    const initialTop = transformarableEntityRef.offsetTop;
+
+    const aspectRatio = initialWidth / initialHeight;
+
+    const resize = (e: MouseEvent) => {
+      if(!isResizing) return;
+
+      let width = initialWidth;
+      let height = initialHeight;
+      let left = initialLeft;
+      let top = initialTop;
+
+      if(action === 'top-right') {
+        width = initialWidth + (e.clientX - startX);
+        height = width / aspectRatio;
+        top = initialTop + (initialHeight - height);
+      } else if(action === 'top-left') {
+        width = initialWidth - (e.clientX - startX);
+        height = width / aspectRatio;
+        left = initialLeft + (initialWidth - width);
+        top = initialTop + (initialHeight - height);
+      } else if(action === 'bottom-right') {
+        width = initialWidth + (e.clientX - startX);
+        height = width / aspectRatio;
+      } else if(action === 'bottom-left') {
+        width = initialWidth - (e.clientX - startX);
+        height = width / aspectRatio;
+        left = initialLeft + (initialWidth - width);
+      }
+
+      width = Math.max(width, 20);
+      height = Math.max(height, 20);
+
+      const previewRect = props.previewRef.getBoundingClientRect();
+
+      width = Math.min(width, previewRect.width - initialLeft);
+      height = Math.min(height, previewRect.height - initialTop);
+
+      transformarableEntityRef.style.width = width + 'px';
+      transformarableEntityRef.style.height = height + 'px';
+      transformarableEntityRef.style.left = left + 'px';
+      transformarableEntityRef.style.top = top + 'px';
+
+      props.onResize({width, height});
+    };
+
+    const stopResize = () => {
+      isResizing = false;
+      window.removeEventListener('mousemove', resize);
+      window.removeEventListener('mouseup', stopResize);
+    };
+
+    window.addEventListener('mousemove', resize);
+    window.addEventListener('mouseup', stopResize);
   };
 
   onMount(() => {
@@ -139,26 +212,24 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
       data-y={props.y}
       ref={transformarableEntityRef}
       class={`${styles.TransformableEntity} ${props.isSelected ? styles.TransformableEntitySelected : ''}`}
-      style={
-        {
-          transform: `translateX(${props.x}px) translateY(${props.y}px)`,
-          width: typeof props.width === 'string' ? props.width : `${props.width}px`,
-          height: typeof props.height === 'string' ? props.height : `${props.height}px`
-        }
-      }
+      style={{
+        transform: `translateX(${props.x}px) translateY(${props.y}px)`,
+        width: typeof props.width === 'string' ? props.width : `${props.width}px`,
+        height: typeof props.height === 'string' ? props.height : `${props.height}px`
+      }}
     >
       {props.isSelected && (
         <>
-          <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopLeft}`}>
+          <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopLeft}`} data-resize-action="top-left">
             <div class={styles.TransformableEntityCorner}></div>
           </div>
-          <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopRight}`}>
+          <div class={`${styles.TransformableEntityCornerHandle} ${styles.TopRight}`} data-resize-action="top-right">
             <div class={styles.TransformableEntityCorner}></div>
           </div>
-          <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomLeft}`}>
+          <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomLeft}`} data-resize-action="bottom-left">
             <div class={styles.TransformableEntityCorner}></div>
           </div>
-          <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomRight}`}>
+          <div class={`${styles.TransformableEntityCornerHandle} ${styles.BottomRight}`} data-resize-action="bottom-right">
             <div class={styles.TransformableEntityCorner}></div>
           </div>
 
@@ -172,6 +243,7 @@ export const TransformableEntity = (props: TransformableEntityProps) => {
     </div>
   );
 };
+
 
 const mapTextAlignToAlignItems = (textAlign: TextEntityType['textAlign']) => {
   if(textAlign === 'left') return 'start';
