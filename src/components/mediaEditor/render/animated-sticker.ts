@@ -20,7 +20,14 @@ export class AnimatedStickerRenderer extends Renderer {
       const captureInterval = 1000 / fps;
 
       for(let i = 0; i < totalFrames; i++) {
-        const bitmap = await this.captureFrame(stickerCanvas);
+        let bitmap = await this.captureFrame(stickerCanvas);
+
+        bitmap = await this.scaleBitmap(
+          bitmap,
+          sticker.width == 'auto' ? stickerCanvas.width : sticker.width,
+          sticker.height == 'auto' ? stickerCanvas.height : sticker.height
+        );
+
         capturedFrames.push(bitmap);
         await this.sleep(captureInterval);
       }
@@ -38,6 +45,14 @@ export class AnimatedStickerRenderer extends Renderer {
         createImageBitmap(blob).then(resolve);
       });
     });
+  }
+
+  private async scaleBitmap(bitmap: ImageBitmap, width: number, height: number): Promise<ImageBitmap> {
+    const offscreenCanvas = new OffscreenCanvas(width, height);
+    const ctx = offscreenCanvas.getContext('2d');
+    // @ts-ignore
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    return createImageBitmap(offscreenCanvas);
   }
 
   private sleep(ms: number): Promise<void> {

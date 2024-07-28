@@ -21,7 +21,7 @@ import {ButtonCornerTsx} from '../buttonCornerTsx';
 import wrapSticker from '../wrappers/sticker';
 import {applyBrightness, applyContrast, applyEnhance, applyFade, applyGrain, applyHighlights, applySaturation, applySelectiveShadow, applySharp, applyVignette, applyWarmth} from './filters';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './drawing/tools-svg';
-import {isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities';
+import {isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, BlurTool, EraserTool} from './drawing';
 import {rotateImage, flipImage, tiltImage, changeImageBitmapSize} from './crop/utils';
 import {RenderManager} from './render';
@@ -577,7 +577,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     });
   };
 
-  const renderMediaNew = async() => {
+  const renderMedia = async() => {
     const renderer = new RenderManager({
       entities: state.entities,
       imageLayerCanvas,
@@ -591,6 +591,13 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const media = await renderer.render();
     const renderEnd = performance.now();
     console.log(`Rendering of video took ${(renderEnd - renderStart) / 1000} seconds.`);
+
+    // const link = document.createElement('a');
+    // link.href = URL.createObjectURL(media);
+    // link.download = media.name;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
 
     setIsLoading(false);
 
@@ -1030,12 +1037,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     setIsLoading(false);
 
-    // setInterval(() => {
-    //   setIsLoading(isLoading() ? false : true);
-    // }, 2000);
-
-    // setIsLoading(true);
-
     window.addEventListener('resize', handleWindowResize);
   });
 
@@ -1064,6 +1065,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
       const activeButton  = stickers.querySelector('.btn-icon.menu-horizontal-div-item.active');
 
+      // 🩼 костылик, для инициализации анимаций
       if(activeButton) {
         (activeButton as HTMLButtonElement).click();
       }
@@ -1072,40 +1074,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   return (
     <div class={styles.MediaEditor}>
-
-      <div style={{
-        'display': 'none',
-        // 'position': 'absolute',
-        'top': 0,
-        'left': 0,
-        'width': '200px',
-        'background': 'rgba(255, 255, 255, 0.5)',
-        'color': 'black',
-        'font-size': '12px',
-        'z-index': 1000,
-        'pointer-events': 'none'
-      }}>
-        <p>Orig. img natural h: {originalImage() && originalImage().naturalHeight}</p>
-        <p>Orig. Img natural w: {originalImage() && originalImage().naturalWidth}</p>
-        <p>_______</p>
-        <p>Workarea img h: {workareaImage && workareaImage.height}</p>
-        <p>Workarea img w: {workareaImage && workareaImage.width}</p>
-        <p>_______</p>
-        <p>P.Content h: {workareaDimensions() && Math.floor(workareaDimensions().height)}</p>
-        <p>P.Content w: {workareaDimensions() && Math.floor(workareaDimensions().width)}</p>
-        <p>______</p>
-        <p>crop h: {state.crop.height}</p>
-        <p>crop w: {state.crop.width}</p>
-        <p>crop x: {state.crop.x}</p>
-        <p>crop y: {state.crop.y}</p>
-        <p>______</p>
-        <p>crop rotate: {state.crop.rotate}</p>
-        <p>crop tilt: {state.crop.tilt}</p>
-        <p>______</p>
-        <p>crop WA h: {state.crop.workareaHeight}</p>
-        <p>crop WA w: {state.crop.workareaWidth}</p>
-      </div>
-
       <div class={styles.MediaEditorContainer}>
         <div id="previewRef" class={styles.MediaEditorPreview} ref={previewRef}>
           <div class={styles.MediaEditorInnerPreview}>
@@ -1136,6 +1104,16 @@ export const MediaEditor = (props: MediaEditorProps) => {
                       width={entity.width}
                       height={entity.height}
                       isSelected={entity.id === state.selectedEntityId}
+                      isResizable={isStickerEntity(entity)}
+                      onResize={({height, width}) => {
+                        if(entity.id !== state.selectedEntityId) {
+                          selectEntity(entity.id);
+                        }
+
+                        setState('entities', entity.id, {width, height});
+
+                        console.log('width, height: ', width, height);
+                      }}
                       onMove={({x, y}) => {
                         if(entity.id !== state.selectedEntityId) {
                           selectEntity(entity.id);
@@ -1652,9 +1630,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
               isLoading() && 'is-loading'
             )}
             onClick={() => {
-              if(!isLoading()) {
-                renderMediaNew();
-              }
+              renderMedia()
             }}
           />
         </div>

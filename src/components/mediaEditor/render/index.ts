@@ -107,34 +107,26 @@ export class RenderManager {
     const staticStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 1);
 
     if(staticStickers.length > 0) {
-      await Promise.all(staticStickers.map(sticker => {
-        this.staticStickerRenderer.render(sticker, this.resultCanvasCtx);
-      }));
-    };
+      for(const sticker of staticStickers) {
+        await this.staticStickerRenderer.render(sticker, this.resultCanvasCtx);
+      }
+    }
 
     // 5 Render of animated stickers
     const animatedStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 2);
     const videoStickers = this.stickerEntities.filter(sticker => sticker.stickerType === 3);
 
     if(animatedStickers.length === 0 && videoStickers.length === 0) {
-      this.onRenderEnd();
+      const canvas = this.resultCanvasCtx.canvas;
+      const dataURL = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = dataURL;
+      link.download = 'sticker_image_before_export.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
       const media = await this._exportImage();
-
-      const url = window.URL.createObjectURL(media);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'image_with_text.png';
-      document.body.appendChild(a);
-      a.click();
-
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-
-      this.onRenderEnd();
 
       return media;
     } else {
@@ -158,13 +150,6 @@ export class RenderManager {
       // a.download = 'animated-sticker.mp4';
       // document.body.appendChild(a);
       // a.click();
-
-      // setTimeout(() => {
-      //   document.body.removeChild(a);
-      //   window.URL.revokeObjectURL(url);
-      // }, 100);
-
-      // console.log('debugging render');
     };
   };
 

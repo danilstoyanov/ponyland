@@ -454,6 +454,7 @@
     height: 8px;
     border-radius: 50%;
     background-color: #fff;
+    pointer-events: none;
   }
 
   &Controls {
@@ -469,9 +470,11 @@
   }
 
   &CornerHandle {
+    z-index: 10;
     position: absolute;
     width: 24px;
     height: 24px;
+    background-color: red;
   }
 
   &CornerHandle.TopLeft {

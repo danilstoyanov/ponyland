@@ -17,12 +17,14 @@ export class StaticStickerRenderer extends Renderer {
       img.onerror = reject;
     });
 
+    const imageBitmap = await createImageBitmap(img);
+
     resultCanvasCtx.drawImage(
-      img,
+      imageBitmap,
       sticker.x,
       sticker.y,
-      sticker.width === 'auto' ? img.width : sticker.width,
-      sticker.height === 'auto' ? img.height : sticker.height
+      sticker.width === 'auto' ? imageBitmap.width : sticker.width,
+      sticker.height === 'auto' ? imageBitmap.height : sticker.height
     );
   }
 }
