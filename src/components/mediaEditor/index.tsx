@@ -581,7 +581,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const renderer = new RenderManager({
       entities: state.entities,
       imageLayerCanvas,
-      drawingLayerCanvas
+      drawingLayerCanvas,
+      preloader: ProgressivePreloaderInstance
     });
 
     setIsLoading(true);
@@ -1024,6 +1025,12 @@ export const MediaEditor = (props: MediaEditorProps) => {
     ProgressivePreloaderInstance.attach(loaderRef, false);
 
     setupStickers();
+
+    // setInterval(() => {
+    //   setIsLoading(isLoading() ? false : true);
+    // }, 2000);
+
+    // setIsLoading(true);
 
     window.addEventListener('resize', handleWindowResize);
   });
@@ -1633,9 +1640,17 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
           <ButtonCornerTsx
             icon='check'
-            className='is-visible'
+            className={classNames(
+              'is-visible',
+              'btn-circle',
+              'btn-corner',
+              'z-depth-3',
+              isLoading() && 'is-loading'
+            )}
             onClick={() => {
-              renderMediaNew();
+              if(!isLoading()) {
+                renderMediaNew();
+              }
             }}
           />
         </div>

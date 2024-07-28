@@ -73,9 +73,8 @@
     top: 0;
     left: 0;
     height: 100%;
-    z-index: 6;
-    width: calc(100vw - var(--sidebar-width));
-    pointer-events: none;
+    z-index: 10;
+    width: 100vw;
     background-color: rgba(0, 0, 0, 0.75);
   };
 
@@ -801,4 +800,44 @@
 
 .MediaEditorRow:global(.row-with-padding .row-icon) {
   color: var(--primary-text-color);
+}
+
+// 🩼 just for showing some extra status of rendering
+:global(.is-loading) {
+  &:hover {
+    cursor: default !important;
+    pointer-events: none !important;
+    background: var(--primary-color) !important;
+  }
+
+  > div, > span {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  &:before {
+    --width: 24px;
+    --height: 24px;
+    content: '';
+    pointer-events: none;
+    cursor: default;
+    display: block;
+    width: var(--width);
+    height: var(--height);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+    position: absolute;
+    top: calc(50% - (var(--height) / 2));
+    left: calc(50% - (var(--width) / 2));
+    transform-origin: center;
+  }
 }
