@@ -1,5 +1,5 @@
 import {Portal, render} from 'solid-js/web';
-import {createStore, unwrap} from 'solid-js/store';
+import {createStore} from 'solid-js/store';
 import {createEffect, createSignal, JSX, For, on, onMount, Show, splitProps, onCleanup} from 'solid-js';
 import classNames from '../../helpers/string/classNames';
 import {RangeSelectorTsx} from '../rangeSelectorTsx';
@@ -7,23 +7,15 @@ import RowTsx from '../rowTsx';
 import type {RangeSelectorProps} from '../rangeSelectorTsx';
 import {ButtonIconTsx} from '../buttonIconTsx';
 import ColorPickerTsx from '../colorPickerTsx';
-import I18n, {i18n, LangPackKey} from '../../lib/langPack';
+import {i18n} from '../../lib/langPack';
 import rootScope from '../../lib/rootScope';
 import styles from './mediaEditor.module.scss';
 import {hexaToRgba, hexToRgb, hexToRgbaWithOpacity} from '../../helpers/color';
 import {ButtonCornerTsx} from '../buttonCornerTsx';
 import {PenSvg, ArrowSvg, BrushSvg, NeonBrushSvg, BlurSvg, EraserSvg} from './tools-svg';
-// import main_canvas_png from './main-canvas.png';
-import main_canvas_png from './test-image.jpg';
-import {MiddlewareHelper, getMiddleware} from '../../helpers/middleware';
-import img_crop_debugger from './CROP_DEBUGGER.png';
-import img_200x200_1_1 from './200x200_1_1.png';
-import img_320x200_8_5 from './320x200_8_5.png';
-import img_3840x2160_8_4 from './3840x2160_8_4.png';
-import img_3840x3840_1_1 from './3840x3840_1_1.png';
+import {getMiddleware} from '../../helpers/middleware';
 import {rotateImage, flipImage, tiltImage, changeImageBitmapSize} from './canvas';
 import debounce from '../../helpers/schedulers/debounce';
-import {useAppState} from '../../stores/appState';
 import {
   applyBrightness,
   applyContrast,
@@ -37,25 +29,20 @@ import {
   applyGrain,
   applySharp
 } from './filters';
-import {isStickerEntity, isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
+import {isTextEntity, StickerEntity, StickerEntityType, TextEntity, TextEntityType, TransformableEntity} from './entities'
 import ColorPicker from '../colorPicker';
 import {DrawingManager, PenTool, ArrowTool, BrushTool, NeonTool, BlurTool, EraserTool} from './drawing';
 import StickersTab from './sticker-tab';
 import appDownloadManager from '../../lib/appManagers/appDownloadManager';
-import readBlobAsDataURL from '../../helpers/blob/readBlobAsDataURL';
 import throttle from '../../helpers/schedulers/throttle';
 import EmoticonsDropdown from './emoticons-dropdown';
-import resizeableImage from '../../lib/cropper';
-import ResizeableImage from './resizeableImage';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
 import wrapSticker from '../wrappers/sticker';
 import ProgressivePreloader from '../preloader';
 import {IS_WEBM_SUPPORTED} from '../../environment/videoSupport';
 import {RenderManager} from './render';
-import {isCloseToWhite} from '../../helpers/color';
-
-// isCloseToWhite,
+import main_canvas_png from './sandbox/main-canvas.png';
 
 /* Navbar & Tabs */
 type FilterType = 'enhance'
@@ -112,7 +99,7 @@ export interface MediaEditorCropState {
   workareaHeight: number;
   workareaWidth: number;
   tilt: number; // tilt is angle we can choose on ruler
-  rotate: number; // rotate is angle we can apply with button
+  rotate: number; // rotate is angle we can apply with rotate button
   isFlipped: boolean;
   isApplied: boolean;
   aspectRatio: CropAspectRatio;
@@ -593,7 +580,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
     }
   };
 
-  // Utility function to read a Blob as a Data URL
   const readBlobAsDataURL = (blob: any) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -625,28 +611,22 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
   const renderMediaForCrop = (angle: number) => {
     return new Promise(async(resolve, reject) => {
-      // Calculate the new dimensions of the canvas after rotation
       const radians = angle * (Math.PI / 180);
       const width = imageLayerCanvas.width;
       const height = imageLayerCanvas.height;
       const newWidth = Math.abs(width * Math.cos(radians)) + Math.abs(height * Math.sin(radians));
       const newHeight = Math.abs(width * Math.sin(radians)) + Math.abs(height * Math.cos(radians));
 
-      // Create a new canvas for the resulting image
       const resultCanvas = document.createElement('canvas');
       resultCanvas.width = newWidth;
       resultCanvas.height = newHeight;
       const resultCtx = resultCanvas.getContext('2d');
 
-      // Translate and rotate the context
       resultCtx.translate(newWidth / 2, newHeight / 2);
       resultCtx.rotate(radians);
 
       const originalImageBitmap = await createImageBitmap(originalImage());
       const resizedWorkareaImage = await changeImageBitmapSize(originalImageBitmap, width, height);
-
-      console.log('resizedWorkareaImage: ', resizedWorkareaImage);
-      console.log('imageLayerCanvas: ', imageLayerCanvas.width, imageLayerCanvas.height);
 
       resultCtx.drawImage(
         resizedWorkareaImage,
@@ -656,41 +636,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
         resizedWorkareaImage.height
       );
 
-      // Render the drawing layer without transparency
-      // resultCtx.drawImage(drawingLayerCanvas, -width / 2, -height / 2);
-
-      // Render stickers
-      // state.entities.forEach(entity => {
-      //   if(isStickerEntity(entity)) {
-      //     resultCtx.drawImage(
-      //       entity.node, // Assuming `node` is an image element
-      //       entity.x - width / 2,
-      //       entity.y - height / 2,
-      //       entity.width === 'auto' ? 100 : entity.width,
-      //       entity.height === 'auto' ? 100 : entity.height
-      //     );
-      //   }
-      // });
-
-      // Render text nodes
-      // state.entities.forEach(entity => {
-      //   if(isTextEntity(entity)) {
-      //     resultCtx.font = `${entity.fontSize}px ${entity.fontFamily}`;
-      //     resultCtx.fillStyle = entity.color;
-      //     resultCtx.textAlign = entity.textAlign;
-      //     resultCtx.save();
-      //     resultCtx.translate(entity.x - width / 2 + (entity as any).width / 2, entity.y - height / 2 + (entity as any).height / 2);
-      //     resultCtx.rotate((entity.rotate * Math.PI) / 180);
-      //     resultCtx.fillText(
-      //       'Your Text Here', // Replace with the actual text if available in the entity object
-      //       -entity.width / 2,
-      //       entity.fontSize / 2
-      //     );
-      //     resultCtx.restore();
-      //   }
-      // });
-
-      // Convert canvas to blob and resolve with the blob URL
       resultCanvas.toBlob((blob) => {
         if(blob) {
           const data = readBlobAsDataURL(blob);
