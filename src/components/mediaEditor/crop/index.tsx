@@ -197,13 +197,13 @@ export const Crop = (props: CropPops) => {
   let CROPWIDTH = 200;
   let CROPHEIGHT = 200;
 
-  const event_state: Partial<{
-    mouse_x: number,
-    mouse_y: number,
-    container_width: number,
-    container_height: number,
-    container_left: number,
-    container_top: number
+  const eventState: Partial<{
+    mouseX: number,
+    mouseY: number,
+    containerWidth: number,
+    containerHeight: number,
+    containerLeft: number,
+    containerTop: number
   }> = {};
 
   function addHandlers() {
@@ -237,14 +237,14 @@ export const Crop = (props: CropPops) => {
   }
 
   function saveEventState(e: any) {
-    event_state.container_width = containerRef.offsetWidth;
-    event_state.container_height = containerRef.offsetHeight;
+    eventState.containerWidth = containerRef.offsetWidth;
+    eventState.containerHeight = containerRef.offsetHeight;
 
-    event_state.container_left = containerRef.offsetLeft;
-    event_state.container_top = containerRef.offsetTop;
+    eventState.containerLeft = containerRef.offsetLeft;
+    eventState.containerTop = containerRef.offsetTop;
 
-    event_state.mouse_x = (e.clientX || e.pageX || e.touches && e.touches[0].clientX) + window.scrollX;
-    event_state.mouse_y = (e.clientY || e.pageY || e.touches && e.touches[0].clientY) + window.scrollY;
+    eventState.mouseX = (e.clientX || e.pageX || e.touches && e.touches[0].clientX) + window.scrollX;
+    eventState.mouseY = (e.clientY || e.pageY || e.touches && e.touches[0].clientY) + window.scrollY;
   }
 
   function removeHandlers() {
@@ -287,8 +287,8 @@ export const Crop = (props: CropPops) => {
     currentTouch.x = e.pageX || e.touches && e.touches[0].pageX;
     currentTouch.y = e.pageY || e.touches && e.touches[0].pageY;
 
-    let left = currentTouch.x - (event_state.mouse_x - event_state.container_left);
-    let top = currentTouch.y - (event_state.mouse_y - event_state.container_top);
+    let left = currentTouch.x - (eventState.mouseX - eventState.containerLeft);
+    let top = currentTouch.y - (eventState.mouseY - eventState.containerTop);
     const w = containerRef.offsetWidth;
     const h = containerRef.offsetHeight;
 
@@ -309,6 +309,27 @@ export const Crop = (props: CropPops) => {
     const top = 0;
 
     cropImageRef.style.maxWidth = overlayImageRef.width - 2 + 'px';
+
+    const CROP_BAR_MIN_HEIGHT = 128;
+    const EXTRA_TOP_SPACE = 48;
+    const viewportHeight = window.innerHeight;
+    const availableHeight = viewportHeight - CROP_BAR_MIN_HEIGHT - EXTRA_TOP_SPACE;
+
+    /*
+      Making sure that crop bar would be always in viewport
+      viewport height is 100vh, and it has overflow hidden, so we want to be sure that
+      these two images cropImageRef and overlayImageRef height is less than viewport - CROP_BAR_MIN_HEIGHT - EXTRA_TOP_SPACE;
+      if it's like that you won't need to apply any changes, but in the opposite situation, you need to scale down their height/width, so all stuff can get into viewport
+    */
+    if(overlayImageRef.height > availableHeight) {
+      const scale = availableHeight / overlayImageRef.height;
+
+      overlayImageRef.style.height = 'auto';
+      overlayImageRef.style.width = overlayImageRef.width * scale + 'px';
+
+      cropImageRef.style.height = 'auto';
+      cropImageRef.style.width = overlayImageRef.width + 'px';
+    }
 
     CROPWIDTH = overlayImageRef.width - 200;
     CROPHEIGHT = overlayImageRef.height - 200;

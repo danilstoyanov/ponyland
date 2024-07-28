@@ -29,7 +29,7 @@ import EmoticonsDropdown from './emoticons-dropdown';
 import {Crop} from './crop';
 import type {CropAspectRatio} from './crop';
 import styles from './mediaEditor.module.scss';
-import main_canvas_png from './sandbox/main-canvas.png';
+import main_canvas_png from './sandbox/CROP_DEBUGGER.png';
 
 type FilterType = 'enhance'
   | 'brightness'
@@ -506,6 +506,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
       imageWidth: originalImage().width
     });
 
+    debugger;
+
     const dimensions = getScaledImageSize(previewRef, {
       imageHeight: height,
       imageWidth: width
@@ -525,7 +527,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
     const imageLayerCtx = imageLayerCanvas.getContext('2d');
 
     imageLayerCtx.fillRect(0, 0, imageLayerCanvas.width, imageLayerCanvas.height);
-    imageLayerCtx.fillStyle = 'green';
 
     let cropImageBitmap = await createImageBitmap(originalImage());
 
@@ -543,6 +544,8 @@ export const MediaEditor = (props: MediaEditorProps) => {
 
     imageLayerCtx.drawImage(cropImageBitmap, x, y, width, height, 0, 0, dimensions.width, dimensions.height);
     workareaImage = await createImageBitmap(imageLayerCanvas);
+
+    await applyFilters(imageLayerCanvas, false);
   };
 
   const onCropChange = async(crop: Partial<MediaEditorCropState>) => {
@@ -646,14 +649,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
     return filters.map(filter => `${filter.id}:${filter.value}`).join('|');
   }
 
-  async function applyFilters(canvas: HTMLCanvasElement) {
+  async function applyFilters(canvas: HTMLCanvasElement, useCache: boolean = true) {
     const filters = filterState.appliedFilters;
     const cacheKey = generateCacheKey(filters);
 
-    /**
-     * Need to think how to support fixed Cache size, for example store no more then 100 entries 🤔
-    */
-    if(filterCache.has(cacheKey)) {
+    if(useCache && filterCache.has(cacheKey)) {
       const cachedBitmap = filterCache.get(cacheKey);
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -676,15 +676,16 @@ export const MediaEditor = (props: MediaEditorProps) => {
     };
 
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(originalImage(), 0, 0, canvas.width, canvas.height); // Draw the original image
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(workareaImage, 0, 0, canvas.width, canvas.height); // Draw the workarea image
 
-    let baseBitmap: ImageBitmap = null;
+    let baseBitmap: ImageBitmap = await createImageBitmap(canvas);
 
     for(let i = 0; i < filters.length; i++) {
       const subFilters = filters.slice(0, i + 1);
       const subCacheKey = generateCacheKey(subFilters);
 
-      if(filterCache.has(subCacheKey)) {
+      if(useCache && filterCache.has(subCacheKey)) {
         baseBitmap = filterCache.get(subCacheKey);
       } else {
         if(baseBitmap) {
@@ -697,9 +698,11 @@ export const MediaEditor = (props: MediaEditorProps) => {
       }
     }
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(baseBitmap, 0, 0);
-    filterCache.set(cacheKey, baseBitmap);
+    if(baseBitmap) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(baseBitmap, 0, 0);
+      filterCache.set(cacheKey, baseBitmap);
+    }
   }
 
   function handleFilterUpdate(type: FilterType) {
@@ -743,7 +746,6 @@ export const MediaEditor = (props: MediaEditorProps) => {
       console.log(`Filter pipeline execution time: ${elapsedTime} milliseconds`);
     }, 24);
   }
-
 
   const handleBrigthnessUpdate = handleFilterUpdate('brightness');
   const handleEnhanceUpdate = handleFilterUpdate('enhance');
@@ -1059,7 +1061,7 @@ export const MediaEditor = (props: MediaEditorProps) => {
     <div class={styles.MediaEditor}>
 
       <div style={{
-        'display': 'none',
+        // 'display': 'none',
         'position': 'absolute',
         'top': 0,
         'left': 0,
